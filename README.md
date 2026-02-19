@@ -213,6 +213,7 @@ The app provides robust offline/online handling:
 - Video looping
 - Preloading of adjacent videos for smooth scrolling
 - Automatic retry on initialization failure
+- **Progress indicator** for videos longer than 30 seconds (tap to seek, drag to scrub, buffered progress visualization)
 
 ## Running Tests
 
