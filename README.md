@@ -71,10 +71,10 @@ lib/
 - **flutter_bloc**: State management
 - **get_it**: Dependency injection
 - **video_player**: Video playback
-- **shared_preferences**: Local caching
+- **hive**: Local storage/caching
+- **hive_flutter**: Hive Flutter integration
 - **equatable**: Value equality
-- **connectivity_plus**: Network connectivity
-- **dartz**: Functional programming
+- **internet_connection_checker_plus**: Network connectivity
 
 ## Installation
 
@@ -114,36 +114,57 @@ Contains shared utilities, error handling, constants, network handling, and comm
 - **Pages**: Screen-level widgets
 - **Widgets**: Reusable UI components
 
-## API Integration
+## Data Source
 
-The app is configured to work with a video API. The expected response format:
+The app currently uses **mock data** with real video URLs from Google's public sample videos for testing and demonstration purposes. The mock data simulates pagination with a 500ms network delay.
 
+### Sample Videos Used:
+- **For Bigger Fun** - Google
+- **For Bigger Blazes** - Google
+- **For Bigger Joyrides** - Google
+- **Elephants Dream** - Blender
+- **Big Buck Bunny** - Blender
+- **For Bigger Escapes** - Google
+- **For Bigger Meltdowns** - Google
+- **Subaru Outback On Street And Dirt** - Garage
+- **Tears Of Steel** - Blender
+- **Volkswagen GTI Review** - Garage
+
+### Video Model Structure:
 ```json
 {
-  "status": "success",
-  "page": 1,
-  "limit": 10,
-  "total_pages": 1,
-  "data": [
-    {
-      "id": "byte_001",
-      "title": "Video Title",
-      "description": "Video description",
-      "video_url": "https://example.com/video.mp4",
-      "author": "Author Name",
-      "likes": 1240,
-      "shares": 45
-    }
-  ]
+  "id": "byte_001",
+  "title": "Video Title",
+  "description": "Video description",
+  "video_url": "https://storage.googleapis.com/gtv-videos-bucket/sample/video.mp4",
+  "author": "Author Name"
 }
 ```
 
-To use a real API endpoint, update the URL in `video_remote_data_source.dart`:
+### Integrating a Real API:
+
+To use a real API endpoint, modify `video_remote_data_source.dart`:
 
 ```dart
-final response = await client.get(
-  Uri.parse('YOUR_API_ENDPOINT?page=$page&limit=$limit'),
-);
+@override
+Future<List<VideoModel>> getVideos({
+  required int page,
+  required int limit,
+}) async {
+  final response = await client.get(
+    Uri.parse('YOUR_API_ENDPOINT?page=$page&limit=$limit'),
+  );
+  
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    // Parse according to your API response structure
+    return (data['data'] as List)
+        .map((json) => VideoModel.fromJson(json))
+        .toList();
+  } else {
+    throw ServerException();
+  }
+}
 ```
 
 ## State Management
@@ -158,7 +179,7 @@ The app uses BLoC pattern with the following states:
 
 ## Caching Strategy
 
-1. Videos are cached locally using SharedPreferences
+1. Videos are cached locally using Hive
 2. On app launch, cached data is displayed first
 3. Fresh data is fetched from API in background
 4. Cache is updated with new data
@@ -199,35 +220,6 @@ flutter test
 flutter build apk --release  # Android
 flutter build ios --release  # iOS
 ```
-
-## Requirements Met
-
-- [x] HTTP package for API requests
-- [x] JSON response parsing using Dart's built-in decoding
-- [x] Pagination for loading additional content
-- [x] Lazy loading for improved performance
-- [x] Caching for video data
-- [x] Error handling during API calls and JSON parsing
-- [x] Proper asynchronous programming
-- [x] Clear separation between UI and business logic
-- [x] Reels-style video page with vertical scrolling
-- [x] Clean Architecture implementation
-- [x] BLoC pattern for state management
-- [x] Dependency Injection using get_it
-- [x] Offline/Online connectivity handling
-- [x] Centralized constants management
-- [x] Automatic video pause on connectivity loss
-- [x] Automatic reconnection handling
-
-## Recent Updates
-
-### v1.1.0
-- Added centralized constants for colors, sizes, and strings
-- Implemented robust offline/online connectivity handling
-- Fixed video reconnection issues when coming back online
-- Added UniqueKey-based PageView rebuild for proper state reset
-- Improved video initialization with post-frame callbacks
-- Added automatic retry mechanism for failed video initializations
 
 ## License
 
