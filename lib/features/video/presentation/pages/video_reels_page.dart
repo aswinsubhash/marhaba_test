@@ -13,14 +13,14 @@ class VideoReelsPage extends StatefulWidget {
 }
 
 class _VideoReelsPageState extends State<VideoReelsPage> {
-  final PageController _pageController = PageController();
+  PageController _pageController = PageController();
   final Map<int, VideoPlayerController> _controllers = {};
-  final Set<int> _initializedIndexes = {};
   int _currentPage = 0;
   List<VideoEntity> _videos = [];
   bool _hasInternet = true;
   bool _isReconnecting = false;
   StreamSubscription<bool>? _connectivitySubscription;
+  UniqueKey _pageViewKey = UniqueKey();
 
   @override
   void initState() {
@@ -49,19 +49,19 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     ) {
       if (!mounted) return;
 
-      // If internet is lost, pause all videos
       if (!isConnected) {
+        // Internet is lost - pause all videos
         _pauseAllVideos();
         setState(() {
           _hasInternet = false;
           _isReconnecting = false;
         });
       } else {
-        // Internet is restored - start reconnecting
+        // Internet is restored
         setState(() {
           _isReconnecting = true;
         });
-        _resetAndReloadVideos();
+        _handleReconnection();
       }
     });
   }
@@ -74,32 +74,41 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     }
   }
 
-  void _resetAndReloadVideos() {
-    // Dispose all controllers
+  void _disposeAllControllers() {
     for (final controller in _controllers.values) {
+      controller.pause();
       controller.dispose();
     }
     _controllers.clear();
-    _initializedIndexes.clear();
+  }
+
+  void _handleReconnection() {
+    // Dispose all video controllers
+    _disposeAllControllers();
 
     // Reset page
     _currentPage = 0;
 
-    // Clear videos list
+    // Dispose old PageController and create new one
+    _pageController.removeListener(_onPageChanged);
+    _pageController.dispose();
+    _pageController = PageController();
+    _pageController.addListener(_onPageChanged);
+
+    // Generate new key to force PageView rebuild
+    _pageViewKey = UniqueKey();
+
+    // Clear videos and reload
     setState(() {
       _videos = [];
     });
 
-    // Jump to first page if controller is attached
-    if (_pageController.hasClients) {
-      _pageController.jumpToPage(0);
-    }
-
-    // Reload videos - will set _hasInternet = true when videos are loaded
+    // Reload videos from API
     context.read<VideoBloc>().add(const LoadVideos());
   }
 
   void _onPageChanged() {
+    if (!_pageController.hasClients) return;
     final newPage = _pageController.page?.round() ?? 0;
     if (newPage != _currentPage) {
       _handlePageChange(newPage);
@@ -110,7 +119,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     // Pause current video
     _controllers[_currentPage]?.pause();
 
-    // Play new video from start if it's a cached video
+    // Play new video from start
     _playVideoFromStart(newPage);
 
     setState(() {
@@ -121,7 +130,6 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   void _playVideoFromStart(int index) {
     final controller = _controllers[index];
     if (controller != null && controller.value.isInitialized) {
-      // Seek to beginning and play
       controller.seekTo(Duration.zero);
       controller.play();
     }
@@ -134,7 +142,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       setState(() {
         _isReconnecting = true;
       });
-      _resetAndReloadVideos();
+      _handleReconnection();
     }
   }
 
@@ -142,9 +150,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   void dispose() {
     _pageController.dispose();
     _connectivitySubscription?.cancel();
-    for (final controller in _controllers.values) {
-      controller.dispose();
-    }
+    _disposeAllControllers();
     super.dispose();
   }
 
@@ -176,7 +182,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
             return NoInternetWidget(onRetry: _retryInternetConnection);
           }
 
-          // Show loading while reconnecting or if videos are empty and loading
+          // Show loading while reconnecting or initial loading
           if (_isReconnecting || state is VideoLoading || _videos.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.white),
@@ -190,15 +196,9 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
           if (_videos.isNotEmpty) {
             return RefreshIndicator(
               onRefresh: () async {
-                // Reset page and clear controllers on refresh
                 _currentPage = 0;
-                for (final controller in _controllers.values) {
-                  controller.dispose();
-                }
-                _controllers.clear();
-                _initializedIndexes.clear();
+                _disposeAllControllers();
 
-                // Jump to first page
                 if (_pageController.hasClients) {
                   _pageController.jumpToPage(0);
                 }
@@ -218,6 +218,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
                   return false;
                 },
                 child: PageView.builder(
+                  key: _pageViewKey,
                   controller: _pageController,
                   scrollDirection: Axis.vertical,
                   itemCount: _videos.length + (_hasReachedMax(state) ? 0 : 1),
@@ -310,27 +311,26 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   }
 
   Widget _buildVideoPlayer(VideoEntity video, int index) {
-    // Check if video is already cached
-    final isCached = _initializedIndexes.contains(index);
+    final controller = _controllers[index];
+    final isInitialized = controller?.value.isInitialized ?? false;
 
-    // Initialize only if:
-    // 1. It's the current page, OR
-    // 2. It's the previous page (for smooth backward scrolling), OR
-    // 3. It's the next page (for smooth forward scrolling)
-    // 4. But only if not already initialized (cached)
+    // Initialize if controller doesn't exist and it's current, previous, or next page
     final shouldInitialize =
-        !isCached &&
+        controller == null &&
         (index == _currentPage ||
             index == _currentPage - 1 ||
             index == _currentPage + 1);
 
     if (shouldInitialize) {
-      _initializeController(video.videoUrl, index);
+      // Use WidgetsBinding to ensure we're not in build phase
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_controllers.containsKey(index)) {
+          _initializeController(video.videoUrl, index);
+        }
+      });
     }
 
-    final controller = _controllers[index];
-
-    if (controller == null || !controller.value.isInitialized) {
+    if (controller == null || !isInitialized) {
       return Container(
         color: AppColors.black,
         child: const Center(
@@ -353,32 +353,40 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   }
 
   Future<void> _initializeController(String url, int index) async {
-    if (_initializedIndexes.contains(index)) return;
+    if (_controllers.containsKey(index)) return;
 
-    _initializedIndexes.add(index);
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     _controllers[index] = controller;
 
     try {
       await controller.initialize();
-      // Set video to loop when completed
+
+      if (!mounted) {
+        controller.dispose();
+        _controllers.remove(index);
+        return;
+      }
+
       controller.setLooping(true);
 
-      // Add listener to update UI when playing state changes
-      controller.addListener(() {
-        setState(() {});
-      });
-
-      // Play if this is the current page
       if (index == _currentPage) {
         controller.play();
       }
 
       setState(() {});
     } catch (e) {
-      debugPrint('Error initializing video: $e');
-      _initializedIndexes.remove(index);
+      debugPrint('Error initializing video at index $index: $e');
+      controller.dispose();
       _controllers.remove(index);
+
+      // Retry once after a short delay
+      if (mounted) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && !_controllers.containsKey(index)) {
+            _initializeController(url, index);
+          }
+        });
+      }
     }
   }
 
@@ -458,7 +466,6 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   Widget _buildPlayPauseOverlay(int index) {
     final controller = _controllers[index];
 
-    // Don't show overlay while video is loading
     if (controller == null || !controller.value.isInitialized) {
       return const SizedBox.shrink();
     }
