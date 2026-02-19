@@ -1,6 +1,6 @@
 # Video Reels App
 
-A Flutter application that displays video content in a reels-style vertical scrolling format with pagination, lazy loading, and caching capabilities.
+A Flutter application that displays video content in a reels-style vertical scrolling format with pagination, lazy loading, caching capabilities, and robust offline/online connectivity handling.
 
 ## Features
 
@@ -8,11 +8,16 @@ A Flutter application that displays video content in a reels-style vertical scro
 - **Pagination**: Load more videos as you scroll
 - **Lazy Loading**: Videos are loaded on demand for better performance
 - **Caching**: Video data is cached locally to minimize API calls
+- **Offline Support**: Seamless handling of internet connectivity changes
+  - Automatic video pause when internet is lost
+  - No internet indicator with retry functionality
+  - Automatic reconnection and video reload when internet is restored
 - **Clean Architecture**: Proper separation of concerns with domain, data, and presentation layers
 - **BLoC Pattern**: State management using flutter_bloc
 - **Dependency Injection**: Using get_it for dependency management
 - **Error Handling**: Graceful error handling with retry functionality
 - **Pull to Refresh**: Refresh video content with pull-down gesture
+- **Centralized Constants**: Organized constants for colors, sizes, and strings
 
 ## Architecture
 
@@ -21,8 +26,15 @@ This project follows Clean Architecture principles with three main layers:
 ```
 lib/
 ├── core/
-│   └── errors/
-│       └── failures.dart          # Error handling classes
+│   ├── constants/
+│   │   ├── colors.dart              # App color constants
+│   │   ├── sizes.dart               # Size constants
+│   │   └── strings.dart             # String constants
+│   ├── errors/
+│   │   └── failures.dart            # Error handling classes
+│   ├── network/
+│   │   └── network_info.dart        # Network connectivity handling
+│   └── exports.dart                 # Central exports file
 ├── features/
 │   └── video/
 │       ├── data/
@@ -48,8 +60,8 @@ lib/
 │           ├── pages/
 │           │   └── video_reels_page.dart          # Main page
 │           └── widgets/
-│               └── video_actions_widget.dart      # UI components
-├── injection_container.dart        # Dependency injection setup
+│               └── no_internet_widget.dart        # No internet indicator
+├── dependency_injection.dart        # Dependency injection setup
 └── main.dart                       # App entry point
 ```
 
@@ -62,12 +74,13 @@ lib/
 - **shared_preferences**: Local caching
 - **equatable**: Value equality
 - **connectivity_plus**: Network connectivity
+- **dartz**: Functional programming
 
 ## Installation
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/aswinsubhash/marhaba_test.git
    cd marhaba_test
    ```
 
@@ -84,7 +97,7 @@ lib/
 ## Project Structure
 
 ### Core Layer
-Contains shared utilities, error handling, and common functionality.
+Contains shared utilities, error handling, constants, network handling, and common functionality.
 
 ### Domain Layer
 - **Entities**: Business objects with no dependencies
@@ -150,11 +163,19 @@ The app uses BLoC pattern with the following states:
 3. Fresh data is fetched from API in background
 4. Cache is updated with new data
 
-## Error Handling
+## Connectivity Handling
 
-- Network errors show cached data if available
-- API errors display user-friendly messages
-- Retry functionality for failed requests
+The app provides robust offline/online handling:
+
+1. **Internet Lost**:
+   - All videos are automatically paused
+   - No internet indicator is displayed
+   - Retry button available for manual reconnection
+
+2. **Internet Restored**:
+   - Videos are automatically reloaded
+   - PageView is rebuilt with fresh data
+   - First video starts playing automatically
 
 ## Video Player Features
 
@@ -162,7 +183,9 @@ The app uses BLoC pattern with the following states:
 - Auto-play on scroll
 - Smooth transitions between videos
 - Play/pause overlay indicator
-- Video actions (like, share, comment, save)
+- Video looping
+- Preloading of adjacent videos for smooth scrolling
+- Automatic retry on initialization failure
 
 ## Running Tests
 
@@ -191,7 +214,26 @@ flutter build ios --release  # iOS
 - [x] Clean Architecture implementation
 - [x] BLoC pattern for state management
 - [x] Dependency Injection using get_it
+- [x] Offline/Online connectivity handling
+- [x] Centralized constants management
+- [x] Automatic video pause on connectivity loss
+- [x] Automatic reconnection handling
+
+## Recent Updates
+
+### v1.1.0
+- Added centralized constants for colors, sizes, and strings
+- Implemented robust offline/online connectivity handling
+- Fixed video reconnection issues when coming back online
+- Added UniqueKey-based PageView rebuild for proper state reset
+- Improved video initialization with post-frame callbacks
+- Added automatic retry mechanism for failed video initializations
 
 ## License
 
 This project is open source and available under the MIT License.
+
+## Author
+
+**Aswin Subhash**
+- GitHub: [@aswinsubhash](https://github.com/aswinsubhash)
