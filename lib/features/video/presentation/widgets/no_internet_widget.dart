@@ -8,40 +8,47 @@ class NoInternetWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black,
+      color: AppColors.black,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.wifi_off_rounded, color: Colors.white54, size: 80),
-            const SizedBox(height: 24),
-            const Text(
-              'No Internet Connection',
+            Icon(
+              Icons.wifi_off_rounded,
+              color: AppColors.white54,
+              size: Sizes.icon80,
+            ),
+            const SizedBox(height: Sizes.spacing24),
+            Text(
+              Strings.noInternetTitle,
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
+                color: AppColors.white,
+                fontSize: Sizes.font20,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Please check your connection and try again',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+            const SizedBox(height: Sizes.spacing12),
+            Text(
+              Strings.noInternetMessage,
+              style: TextStyle(
+                color: AppColors.white70,
+                fontSize: Sizes.font14,
+              ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: Sizes.spacing32),
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: const Text(Strings.retry),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
+                backgroundColor: AppColors.white,
+                foregroundColor: AppColors.black,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
+                  horizontal: Sizes.buttonHorizontalPadding,
+                  vertical: Sizes.buttonVerticalPadding,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(Sizes.buttonRadius30),
                 ),
               ),
             ),
