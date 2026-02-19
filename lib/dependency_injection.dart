@@ -1,6 +1,4 @@
-import 'package:get_it/get_it.dart';
-import 'package:http/http.dart' as http;
-import 'package:hive_flutter/hive_flutter.dart';
+import 'core/exports.dart';
 
 import 'features/video/data/datasources/video_local_data_source.dart';
 import 'features/video/data/datasources/video_remote_data_source.dart';
@@ -38,6 +36,11 @@ Future<void> init() async {
     () => VideoLocalDataSourceImpl(),
   );
 
+  // Core
+  sl.registerLazySingleton<NetworkInfo>(
+    () => NetworkInfoImpl(InternetConnection()),
+  );
+
   // External dependencies
-  sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton(() => Client());
 }

@@ -1,4 +1,4 @@
-import 'package:hive/hive.dart';
+import '../../../../core/exports.dart';
 import '../../domain/entities/video_entity.dart';
 
 part 'video_model.g.dart';

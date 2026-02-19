@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:video_player/video_player.dart';
+import '../../../../core/exports.dart';
 import '../../domain/entities/video_entity.dart';
 import '../bloc/video_bloc.dart';
 import '../bloc/video_event.dart';
 import '../bloc/video_state.dart';
+import '../widgets/no_internet_widget.dart';
 
 class VideoReelsPage extends StatefulWidget {
   const VideoReelsPage({super.key});
@@ -19,12 +18,42 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   final Set<int> _initializedIndexes = {};
   int _currentPage = 0;
   List<VideoEntity> _videos = [];
+  bool _hasInternet = true;
+  StreamSubscription<bool>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
-    context.read<VideoBloc>().add(const LoadVideos());
+    _checkInternetAndLoad();
+    _listenToConnectivity();
     _pageController.addListener(_onPageChanged);
+  }
+
+  Future<void> _checkInternetAndLoad() async {
+    final networkInfo = sl<NetworkInfo>();
+    final isConnected = await networkInfo.isConnected;
+    if (!mounted) return;
+    setState(() {
+      _hasInternet = isConnected;
+    });
+    if (_hasInternet && mounted) {
+      context.read<VideoBloc>().add(const LoadVideos());
+    }
+  }
+
+  void _listenToConnectivity() {
+    final networkInfo = sl<NetworkInfo>();
+    _connectivitySubscription = networkInfo.onConnectivityChanged.listen((
+      isConnected,
+    ) {
+      if (!mounted) return;
+      setState(() {
+        _hasInternet = isConnected;
+      });
+      if (isConnected && _videos.isEmpty && mounted) {
+        context.read<VideoBloc>().add(const LoadVideos());
+      }
+    });
   }
 
   void _onPageChanged() {
@@ -55,9 +84,21 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     }
   }
 
+  Future<void> _retryInternetConnection() async {
+    final networkInfo = sl<NetworkInfo>();
+    final isConnected = await networkInfo.isConnected;
+    if (isConnected && mounted) {
+      setState(() {
+        _hasInternet = true;
+      });
+      context.read<VideoBloc>().add(const LoadVideos());
+    }
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
+    _connectivitySubscription?.cancel();
     for (final controller in _controllers.values) {
       controller.dispose();
     }
@@ -81,6 +122,11 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
           }
         },
         builder: (context, state) {
+          // Show no internet widget if not connected
+          if (!_hasInternet) {
+            return NoInternetWidget(onRetry: _retryInternetConnection);
+          }
+
           if (state is VideoLoading) {
             return const Center(
               child: CircularProgressIndicator(color: Colors.white),

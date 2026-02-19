@@ -1,5 +1,5 @@
+import '../../../../core/exports.dart';
 import '../entities/video_entity.dart';
-import '../../../../core/errors/failures.dart';
 
 abstract class VideoRepository {
   Future<({List<VideoEntity>? videos, Failure? failure})> getVideos({

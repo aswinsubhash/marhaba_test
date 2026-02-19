@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import '../../../../core/exports.dart';
 import '../../domain/entities/video_entity.dart';
 
 abstract class VideoState extends Equatable {

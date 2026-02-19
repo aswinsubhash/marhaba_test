@@ -1,4 +1,4 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import '../../../../core/exports.dart';
 import '../models/video_model.dart';
 
 abstract class VideoLocalDataSource {

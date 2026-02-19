@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import '../../../../core/exports.dart';
 
 class VideoEntity extends Equatable {
   final String id;

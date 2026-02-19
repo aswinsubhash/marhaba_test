@@ -1,4 +1,4 @@
-import 'package:http/http.dart' as http;
+import '../../../../core/exports.dart';
 import '../models/video_model.dart';
 
 abstract class VideoRemoteDataSource {
@@ -6,7 +6,7 @@ abstract class VideoRemoteDataSource {
 }
 
 class VideoRemoteDataSourceImpl implements VideoRemoteDataSource {
-  final http.Client client;
+  final Client client;
 
   VideoRemoteDataSourceImpl({required this.client});
 
@@ -101,11 +101,6 @@ class VideoRemoteDataSourceImpl implements VideoRemoteDataSource {
   }) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
-
-    // In a real app, you would fetch from actual API:
-    // final response = await client.get(
-    //   Uri.parse('https://api.example.com/videos?page=$page&limit=$limit'),
-    // );
 
     // Simulate pagination
     final startIndex = (page - 1) * limit;

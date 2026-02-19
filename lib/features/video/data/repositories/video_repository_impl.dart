@@ -1,6 +1,6 @@
+import '../../../../core/exports.dart';
 import '../../domain/entities/video_entity.dart';
 import '../../domain/repositories/video_repository.dart';
-import '../../../../core/errors/failures.dart';
 import '../datasources/video_local_data_source.dart';
 import '../datasources/video_remote_data_source.dart';
 import '../models/video_model.dart';
