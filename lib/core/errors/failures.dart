@@ -1,0 +1,18 @@
+class Failure {
+  final String message;
+  final int? code;
+
+  const Failure({required this.message, this.code});
+}
+
+class ServerFailure extends Failure {
+  const ServerFailure({super.message = 'Server error occurred', super.code});
+}
+
+class NetworkFailure extends Failure {
+  const NetworkFailure({super.message = 'Network error occurred', super.code});
+}
+
+class CacheFailure extends Failure {
+  const CacheFailure({super.message = 'Cache error occurred', super.code});
+}
