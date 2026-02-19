@@ -5,6 +5,11 @@ A Flutter application that displays video content in a reels-style vertical scro
 ## Features
 
 - **Reels-style Video Player**: Smooth vertical scrolling video playback experience
+- **Video Progress Indicator**: Interactive progress bar for videos longer than 30 seconds
+  - Tap to seek to any position
+  - Drag to scrub through video
+  - Buffered progress visualization
+  - Automatic show/hide based on video duration
 - **Pagination**: Load more videos as you scroll
 - **Lazy Loading**: Videos are loaded on demand for better performance
 - **Caching**: Video data is cached locally to minimize API calls
@@ -60,7 +65,8 @@ lib/
 │           ├── pages/
 │           │   └── video_reels_page.dart          # Main page
 │           └── widgets/
-│               └── no_internet_widget.dart        # No internet indicator
+│               ├── no_internet_widget.dart        # No internet indicator
+│               └── video_progress_indicator.dart  # Video progress bar
 ├── dependency_injection.dart        # Dependency injection setup
 └── main.dart                       # App entry point
 ```
