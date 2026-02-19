@@ -16,6 +16,9 @@ export 'package:internet_connection_checker_plus/internet_connection_checker_plu
 export 'package:get_it/get_it.dart';
 
 // Core
+export 'constants/colors.dart';
+export 'constants/sizes.dart';
+export 'constants/strings.dart';
 export 'errors/failures.dart';
 export 'network/network_info.dart';
 

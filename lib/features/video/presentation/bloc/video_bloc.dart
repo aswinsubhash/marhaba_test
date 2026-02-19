@@ -6,20 +6,20 @@ import 'video_state.dart';
 class VideoBloc extends Bloc<VideoEvent, VideoState> {
   final GetVideosUseCase getVideosUseCase;
 
-  VideoBloc({required this.getVideosUseCase}) : super(VideoInitial()) {
+  VideoBloc({required this.getVideosUseCase}) : super(VideoInitial.create()) {
     on<LoadVideos>(_onLoadVideos);
     on<LoadMoreVideos>(_onLoadMoreVideos);
     on<RefreshVideos>(_onRefreshVideos);
   }
 
   Future<void> _onLoadVideos(LoadVideos event, Emitter<VideoState> emit) async {
-    emit(VideoLoading());
+    emit(VideoLoading.create());
 
     final result = await getVideosUseCase(page: event.page, limit: event.limit);
 
     if (result.videos != null) {
       emit(
-        VideoLoaded(
+        VideoLoaded.create(
           videos: result.videos!,
           currentPage: event.page,
           hasReachedMax: result.videos!.length < event.limit,
@@ -27,8 +27,8 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
       );
     } else {
       emit(
-        VideoError(
-          message: result.failure?.message ?? 'Unknown error occurred',
+        VideoError.create(
+          message: result.failure?.message ?? Strings.unknownError,
         ),
       );
     }
@@ -46,7 +46,7 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
 
     if (currentState is VideoLoaded) {
       emit(
-        VideoLoadingMore(
+        VideoLoadingMore.create(
           videos: currentState.videos,
           currentPage: currentState.currentPage,
         ),
@@ -59,7 +59,7 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
 
       if (result.videos != null && result.videos!.isNotEmpty) {
         emit(
-          VideoLoaded(
+          VideoLoaded.create(
             videos: [...currentState.videos, ...result.videos!],
             currentPage: event.page,
             hasReachedMax: result.videos!.length < event.limit,
@@ -75,13 +75,13 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
     RefreshVideos event,
     Emitter<VideoState> emit,
   ) async {
-    emit(VideoLoading());
+    emit(VideoLoading.create());
 
     final result = await getVideosUseCase(page: 1, limit: event.limit);
 
     if (result.videos != null) {
       emit(
-        VideoLoaded(
+        VideoLoaded.create(
           videos: result.videos!,
           currentPage: 1,
           hasReachedMax: result.videos!.length < event.limit,
@@ -89,8 +89,8 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
       );
     } else {
       emit(
-        VideoError(
-          message: result.failure?.message ?? 'Unknown error occurred',
+        VideoError.create(
+          message: result.failure?.message ?? Strings.unknownError,
         ),
       );
     }

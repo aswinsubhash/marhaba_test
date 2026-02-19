@@ -13,13 +13,14 @@ class VideoReelsPage extends StatefulWidget {
 }
 
 class _VideoReelsPageState extends State<VideoReelsPage> {
-  final PageController _pageController = PageController();
+  PageController _pageController = PageController();
   final Map<int, VideoPlayerController> _controllers = {};
-  final Set<int> _initializedIndexes = {};
   int _currentPage = 0;
   List<VideoEntity> _videos = [];
   bool _hasInternet = true;
+  bool _isReconnecting = false;
   StreamSubscription<bool>? _connectivitySubscription;
+  UniqueKey _pageViewKey = UniqueKey();
 
   @override
   void initState() {
@@ -47,16 +48,67 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       isConnected,
     ) {
       if (!mounted) return;
-      setState(() {
-        _hasInternet = isConnected;
-      });
-      if (isConnected && _videos.isEmpty && mounted) {
-        context.read<VideoBloc>().add(const LoadVideos());
+
+      if (!isConnected) {
+        // Internet is lost - pause all videos
+        _pauseAllVideos();
+        setState(() {
+          _hasInternet = false;
+          _isReconnecting = false;
+        });
+      } else {
+        // Internet is restored
+        setState(() {
+          _isReconnecting = true;
+        });
+        _handleReconnection();
       }
     });
   }
 
+  void _pauseAllVideos() {
+    for (final controller in _controllers.values) {
+      if (controller.value.isInitialized) {
+        controller.pause();
+      }
+    }
+  }
+
+  void _disposeAllControllers() {
+    for (final controller in _controllers.values) {
+      controller.pause();
+      controller.dispose();
+    }
+    _controllers.clear();
+  }
+
+  void _handleReconnection() {
+    // Dispose all video controllers
+    _disposeAllControllers();
+
+    // Reset page
+    _currentPage = 0;
+
+    // Dispose old PageController and create new one
+    _pageController.removeListener(_onPageChanged);
+    _pageController.dispose();
+    _pageController = PageController();
+    _pageController.addListener(_onPageChanged);
+
+    // Generate new key to force PageView rebuild
+    _pageViewKey = UniqueKey();
+
+    // Clear videos and reload
+    setState(() {
+      _videos = [];
+    });
+
+    // Reload videos from API
+    context.read<VideoBloc>().add(const LoadVideos());
+  }
+
   void _onPageChanged() {
+    if (!_pageController.hasClients) return;
     final newPage = _pageController.page?.round() ?? 0;
     if (newPage != _currentPage) {
       _handlePageChange(newPage);
@@ -67,7 +119,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     // Pause current video
     _controllers[_currentPage]?.pause();
 
-    // Play new video from start if it's a cached video
+    // Play new video from start
     _playVideoFromStart(newPage);
 
     setState(() {
@@ -78,7 +130,6 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   void _playVideoFromStart(int index) {
     final controller = _controllers[index];
     if (controller != null && controller.value.isInitialized) {
-      // Seek to beginning and play
       controller.seekTo(Duration.zero);
       controller.play();
     }
@@ -89,9 +140,9 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     final isConnected = await networkInfo.isConnected;
     if (isConnected && mounted) {
       setState(() {
-        _hasInternet = true;
+        _isReconnecting = true;
       });
-      context.read<VideoBloc>().add(const LoadVideos());
+      _handleReconnection();
     }
   }
 
@@ -99,25 +150,29 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   void dispose() {
     _pageController.dispose();
     _connectivitySubscription?.cancel();
-    for (final controller in _controllers.values) {
-      controller.dispose();
-    }
+    _disposeAllControllers();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.black,
       body: BlocConsumer<VideoBloc, VideoState>(
         listener: (context, state) {
           if (state is VideoLoaded) {
             setState(() {
               _videos = state.videos;
+              _hasInternet = true;
+              _isReconnecting = false;
             });
           } else if (state is VideoLoadingMore) {
             setState(() {
               _videos = state.videos;
+            });
+          } else if (state is VideoError) {
+            setState(() {
+              _isReconnecting = false;
             });
           }
         },
@@ -127,9 +182,10 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
             return NoInternetWidget(onRetry: _retryInternetConnection);
           }
 
-          if (state is VideoLoading) {
+          // Show loading while reconnecting or initial loading
+          if (_isReconnecting || state is VideoLoading || _videos.isEmpty) {
             return const Center(
-              child: CircularProgressIndicator(color: Colors.white),
+              child: CircularProgressIndicator(color: AppColors.white),
             );
           }
 
@@ -140,26 +196,21 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
           if (_videos.isNotEmpty) {
             return RefreshIndicator(
               onRefresh: () async {
-                // Reset page and clear controllers on refresh
                 _currentPage = 0;
-                for (final controller in _controllers.values) {
-                  controller.dispose();
-                }
-                _controllers.clear();
-                _initializedIndexes.clear();
+                _disposeAllControllers();
 
-                // Jump to first page
                 if (_pageController.hasClients) {
                   _pageController.jumpToPage(0);
                 }
 
                 context.read<VideoBloc>().add(const RefreshVideos());
               },
-              color: Colors.white,
-              backgroundColor: Colors.grey[900],
+              color: AppColors.white,
+              backgroundColor: AppColors.grey900,
               child: NotificationListener<ScrollNotification>(
                 onNotification: (notification) {
                   if (notification is ScrollEndNotification &&
+                      _pageController.hasClients &&
                       _pageController.position.pixels >=
                           _pageController.position.maxScrollExtent * 0.8) {
                     _loadMoreVideos(state);
@@ -167,6 +218,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
                   return false;
                 },
                 child: PageView.builder(
+                  key: _pageViewKey,
                   controller: _pageController,
                   scrollDirection: Axis.vertical,
                   itemCount: _videos.length + (_hasReachedMax(state) ? 0 : 1),
@@ -186,10 +238,10 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
             );
           }
 
-          return const Center(
+          return Center(
             child: Text(
-              'No videos available',
-              style: TextStyle(color: Colors.white),
+              Strings.noVideosAvailable,
+              style: const TextStyle(color: AppColors.white),
             ),
           );
         },
@@ -217,19 +269,23 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 48),
-          const SizedBox(height: 16),
+          Icon(
+            Icons.error_outline,
+            color: AppColors.red,
+            size: Sizes.errorIconSize,
+          ),
+          const SizedBox(height: Sizes.spacing16),
           Text(
             message,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppColors.white),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: Sizes.spacing16),
           ElevatedButton(
             onPressed: () {
               context.read<VideoBloc>().add(const LoadVideos());
             },
-            child: const Text('Retry'),
+            child: const Text(Strings.retry),
           ),
         ],
       ),
@@ -237,7 +293,9 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   }
 
   Widget _buildLoadingIndicator() {
-    return const Center(child: CircularProgressIndicator(color: Colors.white));
+    return const Center(
+      child: CircularProgressIndicator(color: AppColors.white),
+    );
   }
 
   Widget _buildVideoItem(VideoEntity video, int index) {
@@ -253,31 +311,30 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   }
 
   Widget _buildVideoPlayer(VideoEntity video, int index) {
-    // Check if video is already cached
-    final isCached = _initializedIndexes.contains(index);
+    final controller = _controllers[index];
+    final isInitialized = controller?.value.isInitialized ?? false;
 
-    // Initialize only if:
-    // 1. It's the current page, OR
-    // 2. It's the previous page (for smooth backward scrolling), OR
-    // 3. It's the next page (for smooth forward scrolling)
-    // 4. But only if not already initialized (cached)
+    // Initialize if controller doesn't exist and it's current, previous, or next page
     final shouldInitialize =
-        !isCached &&
+        controller == null &&
         (index == _currentPage ||
             index == _currentPage - 1 ||
             index == _currentPage + 1);
 
     if (shouldInitialize) {
-      _initializeController(video.videoUrl, index);
+      // Use WidgetsBinding to ensure we're not in build phase
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_controllers.containsKey(index)) {
+          _initializeController(video.videoUrl, index);
+        }
+      });
     }
 
-    final controller = _controllers[index];
-
-    if (controller == null || !controller.value.isInitialized) {
+    if (controller == null || !isInitialized) {
       return Container(
-        color: Colors.black,
+        color: AppColors.black,
         child: const Center(
-          child: CircularProgressIndicator(color: Colors.white),
+          child: CircularProgressIndicator(color: AppColors.white),
         ),
       );
     }
@@ -296,32 +353,40 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   }
 
   Future<void> _initializeController(String url, int index) async {
-    if (_initializedIndexes.contains(index)) return;
+    if (_controllers.containsKey(index)) return;
 
-    _initializedIndexes.add(index);
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     _controllers[index] = controller;
 
     try {
       await controller.initialize();
-      // Set video to loop when completed
+
+      if (!mounted) {
+        controller.dispose();
+        _controllers.remove(index);
+        return;
+      }
+
       controller.setLooping(true);
 
-      // Add listener to update UI when playing state changes
-      controller.addListener(() {
-        setState(() {});
-      });
-
-      // Play if this is the current page
       if (index == _currentPage) {
         controller.play();
       }
 
       setState(() {});
     } catch (e) {
-      debugPrint('Error initializing video: $e');
-      _initializedIndexes.remove(index);
+      debugPrint('Error initializing video at index $index: $e');
+      controller.dispose();
       _controllers.remove(index);
+
+      // Retry once after a short delay
+      if (mounted) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && !_controllers.containsKey(index)) {
+            _initializeController(url, index);
+          }
+        });
+      }
     }
   }
 
@@ -343,12 +408,15 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       left: 0,
       right: 0,
       child: Container(
-        height: 200,
+        height: Sizes.gradientOverlayHeight,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black.withValues(alpha: 0.8)],
+            colors: [
+              Colors.transparent,
+              AppColors.black.withValues(alpha: 0.8),
+            ],
           ),
         ),
       ),
@@ -357,35 +425,35 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
 
   Widget _buildVideoInfo(VideoEntity video) {
     return Positioned(
-      bottom: 20,
-      left: 16,
-      right: 16,
+      bottom: Sizes.videoInfoBottomPadding,
+      left: Sizes.videoInfoHorizontalPadding,
+      right: Sizes.videoInfoHorizontalPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '@${video.author}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+            video.author,
+            style: TextStyle(
+              color: AppColors.white,
+              fontSize: Sizes.font16,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Sizes.spacing8),
           Text(
             video.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
+            style: TextStyle(
+              color: AppColors.white,
+              fontSize: Sizes.font14,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: Sizes.spacing4),
           Text(
             video.description,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 12,
+              color: AppColors.white.withValues(alpha: 0.8),
+              fontSize: Sizes.font12,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -398,7 +466,6 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   Widget _buildPlayPauseOverlay(int index) {
     final controller = _controllers[index];
 
-    // Don't show overlay while video is loading
     if (controller == null || !controller.value.isInitialized) {
       return const SizedBox.shrink();
     }
@@ -413,11 +480,15 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
           duration: const Duration(milliseconds: 200),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
+              color: AppColors.black.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
-            padding: const EdgeInsets.all(20),
-            child: const Icon(Icons.play_arrow, color: Colors.white, size: 48),
+            padding: const EdgeInsets.all(Sizes.playPauseOverlayPadding),
+            child: const Icon(
+              Icons.play_arrow,
+              color: AppColors.white,
+              size: Sizes.icon48,
+            ),
           ),
         ),
       ),
