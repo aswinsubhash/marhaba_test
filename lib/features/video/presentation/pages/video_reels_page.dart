@@ -4,6 +4,7 @@ import '../bloc/video_bloc.dart';
 import '../bloc/video_event.dart';
 import '../bloc/video_state.dart';
 import '../widgets/no_internet_widget.dart';
+import '../widgets/video_progress_indicator.dart';
 
 class VideoReelsPage extends StatefulWidget {
   const VideoReelsPage({super.key});
@@ -299,6 +300,11 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   }
 
   Widget _buildVideoItem(VideoEntity video, int index) {
+    final controller = _controllers[index];
+    final isInitialized = controller?.value.isInitialized ?? false;
+    final duration = controller?.value.duration ?? Duration.zero;
+    final showProgressBar = isInitialized && duration.inSeconds > 30;
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -306,7 +312,22 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
         _buildGradientOverlay(),
         _buildVideoInfo(video),
         _buildPlayPauseOverlay(index),
+        if (showProgressBar) _buildProgressBar(index),
       ],
+    );
+  }
+
+  Widget _buildProgressBar(int index) {
+    final controller = _controllers[index];
+    if (controller == null || !controller.value.isInitialized) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      bottom: 50,
+      left: 0,
+      right: 0,
+      child: VideoProgressBar(controller: controller),
     );
   }
 
@@ -424,8 +445,11 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   }
 
   Widget _buildVideoInfo(VideoEntity video) {
+    // Always keep text at the same position with space reserved for progress bar
+    const bottomPadding = Sizes.videoInfoBottomPadding + 80;
+
     return Positioned(
-      bottom: Sizes.videoInfoBottomPadding,
+      bottom: bottomPadding,
       left: Sizes.videoInfoHorizontalPadding,
       right: Sizes.videoInfoHorizontalPadding,
       child: Column(

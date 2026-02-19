@@ -10,6 +10,7 @@ class AppColors {
   static const Color white70 = Color(0xB3FFFFFF);
 
   // Grey
+  static const Color grey = Color(0xFF9E9E9E);
   static const Color grey900 = Color(0xFF212121);
 
   // Semantic Colors
