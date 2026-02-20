@@ -12,7 +12,7 @@ A Flutter application that displays video content in a reels-style vertical scro
   - Automatic show/hide based on video duration
 - **Pagination**: Load more videos as you scroll
 - **Lazy Loading**: Videos are loaded on demand for better performance
-- **Smart Memory Management**: Pre-buffers ±4 videos, caches up to 10 controllers for smooth back-navigation
+- **Smart Memory Management**: Pre-buffers 4 videos before and 4 videos after current position, caches up to 10 controllers for smooth back-navigation
 - **Caching**: Video data is cached locally to minimize API calls
 - **Offline Support**: Seamless handling of internet connectivity changes
   - Automatic video pause when internet is lost
@@ -226,7 +226,7 @@ The app provides robust offline/online handling:
 
 ## Memory Management
 
-- Caches up to 10 video controllers (current ± 5)
+- Caches up to 10 video controllers (5 videos before and 5 videos after current position)
 - Automatic cleanup of distant controllers
 - Smooth back-navigation experience
 
