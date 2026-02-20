@@ -35,7 +35,6 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
 
       setState(() {});
     } catch (e) {
-      debugPrint('Error initializing video at index $index: $e');
       controller.dispose();
       controllers.remove(index);
 
@@ -101,7 +100,6 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
       final controller = controllers.remove(index);
       controller?.pause();
       controller?.dispose();
-      debugPrint('Cleaned up controller at index $index');
     }
   }
 

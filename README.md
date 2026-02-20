@@ -5,6 +5,7 @@ A Flutter application that displays video content in a reels-style vertical scro
 ## Features
 
 - **Reels-style Video Player**: Smooth vertical scrolling video playback experience
+- **2x Fast Forward**: Long press on right side of screen to play at 2x speed
 - **Video Progress Indicator**: Interactive progress bar for videos longer than 30 seconds
   - Tap to seek to any position
   - Drag to scrub through video
@@ -12,6 +13,7 @@ A Flutter application that displays video content in a reels-style vertical scro
   - Automatic show/hide based on video duration
 - **Pagination**: Load more videos as you scroll
 - **Lazy Loading**: Videos are loaded on demand for better performance
+- **Smart Memory Management**: Caches up to 10 video controllers for smooth back-navigation
 - **Caching**: Video data is cached locally to minimize API calls
 - **Offline Support**: Seamless handling of internet connectivity changes
   - Automatic video pause when internet is lost
@@ -62,10 +64,16 @@ lib/
 │           │   ├── video_bloc.dart                # BLoC
 │           │   ├── video_event.dart               # Events
 │           │   └── video_state.dart               # States
+│           ├── mixins/
+│           │   └── video_controller_mixin.dart    # Video controller logic
 │           ├── pages/
 │           │   └── video_reels_page.dart          # Main page
 │           └── widgets/
+│               ├── fast_forward_indicator.dart    # 2x speed indicator
 │               ├── no_internet_widget.dart        # No internet indicator
+│               ├── play_pause_overlay.dart        # Play/pause button
+│               ├── video_info_widget.dart         # Video info overlay
+│               ├── video_player_widget.dart       # Video player widget
 │               └── video_progress_indicator.dart  # Video progress bar
 ├── dependency_injection.dart        # Dependency injection setup
 └── main.dart                       # App entry point
@@ -117,6 +125,7 @@ Contains shared utilities, error handling, constants, network handling, and comm
 
 ### Presentation Layer
 - **BLoC**: State management with events and states
+- **Mixins**: Reusable controller logic
 - **Pages**: Screen-level widgets
 - **Widgets**: Reusable UI components
 
@@ -207,13 +216,20 @@ The app provides robust offline/online handling:
 ## Video Player Features
 
 - Tap to play/pause
+- Long press right side for 2x speed
 - Auto-play on scroll
 - Smooth transitions between videos
 - Play/pause overlay indicator
 - Video looping
 - Preloading of adjacent videos for smooth scrolling
 - Automatic retry on initialization failure
-- Progress indicator for videos longer than 30 seconds (tap to seek, drag to scrub, buffered progress visualization)
+- Progress indicator for videos longer than 30 seconds
+
+## Memory Management
+
+- Caches up to 10 video controllers (current ± 5)
+- Automatic cleanup of distant controllers
+- Smooth back-navigation experience
 
 ## Building for Production
 
