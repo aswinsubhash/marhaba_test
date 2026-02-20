@@ -133,12 +133,13 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
 
   /// Dispose controllers that are far from current position
   /// Keeps memory usage bounded while maintaining smooth scrolling
+  /// Caches up to 10 videos for Instagram-like back navigation experience
   void _cleanupDistantControllers(int currentPage) {
-    // Only cleanup if we have more than 5 controllers
-    if (_controllers.length <= 5) return;
+    // Only cleanup if we have more than 10 controllers
+    if (_controllers.length <= 10) return;
 
     final indicesToRemove = <int>[];
-    const keepRange = 2; // Keep current ± 2
+    const keepRange = 5; // Keep current ± 5 (11 videos total)
 
     for (final index in _controllers.keys) {
       if (index < currentPage - keepRange || index > currentPage + keepRange) {
