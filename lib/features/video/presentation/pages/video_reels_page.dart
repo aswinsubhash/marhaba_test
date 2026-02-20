@@ -23,6 +23,10 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   StreamSubscription<bool>? _connectivitySubscription;
   UniqueKey _pageViewKey = UniqueKey();
 
+  // Fast forward state
+  bool _isFastForwarding = false;
+  int _fastForwardIndex = -1;
+
   @override
   void initState() {
     super.initState();
@@ -332,15 +336,58 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     final duration = controller?.value.duration ?? Duration.zero;
     final showProgressBar = isInitialized && duration.inSeconds > 30;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _buildVideoPlayer(video, index),
-        _buildGradientOverlay(),
-        _buildVideoInfo(video),
-        _buildPlayPauseOverlay(index),
-        if (showProgressBar) _buildProgressBar(index),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          onLongPressStart: (details) {
+            _startFastForward(
+              index,
+              details.localPosition,
+              Size(constraints.maxWidth, constraints.maxHeight),
+            );
+          },
+          onLongPressEnd: (_) {
+            _stopFastForward();
+          },
+          onLongPressCancel: () {
+            _stopFastForward();
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildVideoPlayer(video, index),
+              _buildGradientOverlay(),
+              _buildVideoInfo(video),
+              _buildPlayPauseOverlay(index),
+              if (showProgressBar) _buildProgressBar(index),
+              // Fast forward indicator (2x badge)
+              if (_isFastForwarding && _fastForwardIndex == index)
+                Positioned(
+                  top: 60,
+                  right: 20,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Text(
+                      '2x',
+                      style: TextStyle(
+                        color: AppColors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -418,6 +465,13 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
 
       controller.setLooping(true);
 
+      // Add listener to update UI when playing state changes
+      controller.addListener(() {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+
       if (index == _currentPage) {
         controller.play();
       }
@@ -449,6 +503,36 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       controller.play();
     }
     setState(() {});
+  }
+
+  /// Handle fast forward start (2x speed on long press right side)
+  void _startFastForward(int index, Offset localPosition, Size size) {
+    // Only trigger if press is on right half of screen
+    if (localPosition.dx < size.width / 2) return;
+
+    final controller = _controllers[index];
+    if (controller == null || !controller.value.isInitialized) return;
+
+    controller.setPlaybackSpeed(2.0);
+    setState(() {
+      _isFastForwarding = true;
+      _fastForwardIndex = index;
+    });
+  }
+
+  /// Handle fast forward end (return to normal speed)
+  void _stopFastForward() {
+    if (!_isFastForwarding) return;
+
+    final controller = _controllers[_fastForwardIndex];
+    if (controller != null && controller.value.isInitialized) {
+      controller.setPlaybackSpeed(1.0);
+    }
+
+    setState(() {
+      _isFastForwarding = false;
+      _fastForwardIndex = -1;
+    });
   }
 
   Widget _buildGradientOverlay() {
