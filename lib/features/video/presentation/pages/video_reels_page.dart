@@ -24,6 +24,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
   List<VideoEntity> _videos = [];
   bool _hasInternet = true;
   bool _isReconnecting = false;
+  bool _wasDisconnected = false;
   StreamSubscription<bool>? _connectivitySubscription;
   UniqueKey _pageViewKey = UniqueKey();
 
@@ -67,8 +68,9 @@ class _VideoReelsPageState extends State<VideoReelsPage>
         setState(() {
           _hasInternet = false;
           _isReconnecting = false;
+          _wasDisconnected = true;
         });
-      } else {
+      } else if (_wasDisconnected) {
         setState(() {
           _isReconnecting = true;
         });
@@ -107,6 +109,11 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     controllers[currentPage]?.pause();
     playVideoFromStart(newPage);
     cleanupDistantControllers(newPage);
+
+    if (_videos.length - newPage <= 1) {
+      final state = context.read<VideoBloc>().state;
+      _loadMoreVideos(state);
+    }
 
     setState(() {
       currentPage = newPage;
@@ -190,33 +197,22 @@ class _VideoReelsPageState extends State<VideoReelsPage>
       },
       color: AppColors.white,
       backgroundColor: AppColors.grey900,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (notification) {
-          if (notification is ScrollEndNotification &&
-              _pageController.hasClients &&
-              _pageController.position.pixels >=
-                  _pageController.position.maxScrollExtent * 0.8) {
-            _loadMoreVideos(state);
+      child: PageView.builder(
+        key: _pageViewKey,
+        controller: _pageController,
+        scrollDirection: Axis.vertical,
+        itemCount: _videos.length + (_hasReachedMax(state) ? 0 : 1),
+        onPageChanged: (index) {
+          if (index < _videos.length) {
+            _handlePageChange(index);
           }
-          return false;
         },
-        child: PageView.builder(
-          key: _pageViewKey,
-          controller: _pageController,
-          scrollDirection: Axis.vertical,
-          itemCount: _videos.length + (_hasReachedMax(state) ? 0 : 1),
-          onPageChanged: (index) {
-            if (index < _videos.length) {
-              _handlePageChange(index);
-            }
-          },
-          itemBuilder: (context, index) {
-            if (index >= _videos.length) {
-              return _buildLoadingIndicator();
-            }
-            return _buildVideoItem(_videos[index], index);
-          },
-        ),
+        itemBuilder: (context, index) {
+          if (index >= _videos.length) {
+            return _buildLoadingIndicator();
+          }
+          return _buildVideoItem(_videos[index], index);
+        },
       ),
     );
   }
@@ -312,9 +308,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     final controller = controllers[index];
     final isInitialized = isControllerInitialized(index);
 
-    final shouldInitialize =
-        controller == null &&
-        (index >= currentPage - 4 && index <= currentPage + 4);
+    final shouldInitialize = controller == null && index == currentPage;
 
     if (shouldInitialize) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

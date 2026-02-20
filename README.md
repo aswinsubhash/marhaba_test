@@ -12,7 +12,7 @@ A Flutter application that displays video content in a reels-style vertical scro
   - Automatic show/hide based on video duration
 - **Pagination**: Load more videos as you scroll
 - **Lazy Loading**: Videos are loaded on demand for better performance
-- **Smart Memory Management**: Pre-buffers 4 videos before and 4 videos after current position, caches up to 10 controllers for smooth back-navigation
+- **Smart Memory Management**: Caches up to 10 video controllers for smooth back-navigation
 - **Caching**: Video data is cached locally to minimize API calls
 - **Offline Support**: Seamless handling of internet connectivity changes
   - Automatic video pause when internet is lost
@@ -128,59 +128,6 @@ Contains shared utilities, error handling, constants, network handling, and comm
 - **Pages**: Screen-level widgets
 - **Widgets**: Reusable UI components
 
-## Data Source
-
-The app currently uses **mock data** with real video URLs from Google's public sample videos for testing and demonstration purposes. The mock data simulates pagination with a 500ms network delay.
-
-### Sample Videos Used:
-- **For Bigger Fun** - Google
-- **For Bigger Blazes** - Google
-- **For Bigger Joyrides** - Google
-- **Elephants Dream** - Blender
-- **Big Buck Bunny** - Blender
-- **For Bigger Escapes** - Google
-- **For Bigger Meltdowns** - Google
-- **Subaru Outback On Street And Dirt** - Garage
-- **Tears Of Steel** - Blender
-- **Volkswagen GTI Review** - Garage
-
-### Video Model Structure:
-```json
-{
-  "id": "byte_001",
-  "title": "Video Title",
-  "description": "Video description",
-  "video_url": "https://storage.googleapis.com/gtv-videos-bucket/sample/video.mp4",
-  "author": "Author Name"
-}
-```
-
-### Integrating a Real API:
-
-To use a real API endpoint, modify `video_remote_data_source.dart`:
-
-```dart
-@override
-Future<List<VideoModel>> getVideos({
-  required int page,
-  required int limit,
-}) async {
-  final response = await client.get(
-    Uri.parse('YOUR_API_ENDPOINT?page=$page&limit=$limit'),
-  );
-  
-  if (response.statusCode == 200) {
-    final data = json.decode(response.body);
-    // Parse according to your API response structure
-    return (data['data'] as List)
-        .map((json) => VideoModel.fromJson(json))
-        .toList();
-  } else {
-    throw ServerException();
-  }
-}
-```
-
 ## State Management
 
 The app uses BLoC pattern with the following states:
@@ -220,13 +167,12 @@ The app provides robust offline/online handling:
 - Smooth transitions between videos
 - Play/pause overlay indicator
 - Video looping
-- Preloading of adjacent videos for smooth scrolling
 - Automatic retry on initialization failure
 - Progress indicator for videos longer than 30 seconds
 
 ## Memory Management
 
-- Caches up to 10 video controllers (5 videos before and 5 videos after current position)
+- Caches up to 10 video controllers
 - Automatic cleanup of distant controllers
 - Smooth back-navigation experience
 
