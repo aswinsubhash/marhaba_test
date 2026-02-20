@@ -3,7 +3,12 @@ import '../../domain/entities/video_entity.dart';
 import '../bloc/video_bloc.dart';
 import '../bloc/video_event.dart';
 import '../bloc/video_state.dart';
+import '../mixins/video_controller_mixin.dart';
+import '../widgets/fast_forward_indicator.dart';
 import '../widgets/no_internet_widget.dart';
+import '../widgets/play_pause_overlay.dart';
+import '../widgets/video_info_widget.dart';
+import '../widgets/video_player_widget.dart';
 import '../widgets/video_progress_indicator.dart';
 
 class VideoReelsPage extends StatefulWidget {
@@ -13,19 +18,14 @@ class VideoReelsPage extends StatefulWidget {
   State<VideoReelsPage> createState() => _VideoReelsPageState();
 }
 
-class _VideoReelsPageState extends State<VideoReelsPage> {
+class _VideoReelsPageState extends State<VideoReelsPage>
+    with VideoControllerMixin {
   PageController _pageController = PageController();
-  final Map<int, VideoPlayerController> _controllers = {};
-  int _currentPage = 0;
   List<VideoEntity> _videos = [];
   bool _hasInternet = true;
   bool _isReconnecting = false;
   StreamSubscription<bool>? _connectivitySubscription;
   UniqueKey _pageViewKey = UniqueKey();
-
-  // Fast forward state
-  bool _isFastForwarding = false;
-  int _fastForwardIndex = -1;
 
   @override
   void initState() {
@@ -33,6 +33,14 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     _checkInternetAndLoad();
     _listenToConnectivity();
     _pageController.addListener(_onPageChanged);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _connectivitySubscription?.cancel();
+    disposeAllControllers();
+    super.dispose();
   }
 
   Future<void> _checkInternetAndLoad() async {
@@ -55,14 +63,12 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       if (!mounted) return;
 
       if (!isConnected) {
-        // Internet is lost - pause all videos
-        _pauseAllVideos();
+        pauseAllVideos();
         setState(() {
           _hasInternet = false;
           _isReconnecting = false;
         });
       } else {
-        // Internet is restored
         setState(() {
           _isReconnecting = true;
         });
@@ -71,100 +77,40 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     });
   }
 
-  void _pauseAllVideos() {
-    for (final controller in _controllers.values) {
-      if (controller.value.isInitialized) {
-        controller.pause();
-      }
-    }
-  }
-
-  void _disposeAllControllers() {
-    for (final controller in _controllers.values) {
-      controller.pause();
-      controller.dispose();
-    }
-    _controllers.clear();
-  }
-
   void _handleReconnection() {
-    // Dispose all video controllers
-    _disposeAllControllers();
+    disposeAllControllers();
+    currentPage = 0;
 
-    // Reset page
-    _currentPage = 0;
-
-    // Dispose old PageController and create new one
     _pageController.removeListener(_onPageChanged);
     _pageController.dispose();
     _pageController = PageController();
     _pageController.addListener(_onPageChanged);
 
-    // Generate new key to force PageView rebuild
     _pageViewKey = UniqueKey();
 
-    // Clear videos and reload
     setState(() {
       _videos = [];
     });
 
-    // Reload videos from API
     context.read<VideoBloc>().add(const LoadVideos());
   }
 
   void _onPageChanged() {
     if (!_pageController.hasClients) return;
     final newPage = _pageController.page?.round() ?? 0;
-    if (newPage != _currentPage) {
+    if (newPage != currentPage) {
       _handlePageChange(newPage);
     }
   }
 
   void _handlePageChange(int newPage) {
-    // Pause current video
-    _controllers[_currentPage]?.pause();
-
-    // Play new video from start
-    _playVideoFromStart(newPage);
-
-    // Clean up distant controllers to prevent memory bloat
-    _cleanupDistantControllers(newPage);
+    controllers[currentPage]?.pause();
+    playVideoFromStart(newPage);
+    cleanupDistantControllers(newPage);
 
     setState(() {
-      _currentPage = newPage;
+      currentPage = newPage;
     });
-  }
-
-  /// Dispose controllers that are far from current position
-  /// Keeps memory usage bounded while maintaining smooth scrolling
-  /// Caches up to 10 videos for Instagram-like back navigation experience
-  void _cleanupDistantControllers(int currentPage) {
-    // Only cleanup if we have more than 10 controllers
-    if (_controllers.length <= 10) return;
-
-    final indicesToRemove = <int>[];
-    const keepRange = 5; // Keep current ± 5 (11 videos total)
-
-    for (final index in _controllers.keys) {
-      if (index < currentPage - keepRange || index > currentPage + keepRange) {
-        indicesToRemove.add(index);
-      }
-    }
-
-    for (final index in indicesToRemove) {
-      final controller = _controllers.remove(index);
-      controller?.pause();
-      controller?.dispose();
-      debugPrint('Cleaned up controller at index $index');
-    }
-  }
-
-  void _playVideoFromStart(int index) {
-    final controller = _controllers[index];
-    if (controller != null && controller.value.isInitialized) {
-      controller.seekTo(Duration.zero);
-      controller.play();
-    }
   }
 
   Future<void> _retryInternetConnection() async {
@@ -176,14 +122,6 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       });
       _handleReconnection();
     }
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _connectivitySubscription?.cancel();
-    _disposeAllControllers();
-    super.dispose();
   }
 
   @override
@@ -209,12 +147,10 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
           }
         },
         builder: (context, state) {
-          // Show no internet widget if not connected
           if (!_hasInternet) {
             return NoInternetWidget(onRetry: _retryInternetConnection);
           }
 
-          // Show loading while reconnecting or initial loading
           if (_isReconnecting || state is VideoLoading || _videos.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.white),
@@ -226,48 +162,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
           }
 
           if (_videos.isNotEmpty) {
-            return RefreshIndicator(
-              onRefresh: () async {
-                _currentPage = 0;
-                _disposeAllControllers();
-
-                if (_pageController.hasClients) {
-                  _pageController.jumpToPage(0);
-                }
-
-                context.read<VideoBloc>().add(const RefreshVideos());
-              },
-              color: AppColors.white,
-              backgroundColor: AppColors.grey900,
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  if (notification is ScrollEndNotification &&
-                      _pageController.hasClients &&
-                      _pageController.position.pixels >=
-                          _pageController.position.maxScrollExtent * 0.8) {
-                    _loadMoreVideos(state);
-                  }
-                  return false;
-                },
-                child: PageView.builder(
-                  key: _pageViewKey,
-                  controller: _pageController,
-                  scrollDirection: Axis.vertical,
-                  itemCount: _videos.length + (_hasReachedMax(state) ? 0 : 1),
-                  onPageChanged: (index) {
-                    if (index < _videos.length) {
-                      _handlePageChange(index);
-                    }
-                  },
-                  itemBuilder: (context, index) {
-                    if (index >= _videos.length) {
-                      return _buildLoadingIndicator();
-                    }
-                    return _buildVideoItem(_videos[index], index);
-                  },
-                ),
-              ),
-            );
+            return _buildPageView(state);
           }
 
           return Center(
@@ -277,6 +172,51 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildPageView(VideoState state) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        currentPage = 0;
+        disposeAllControllers();
+
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(0);
+        }
+
+        context.read<VideoBloc>().add(const RefreshVideos());
+      },
+      color: AppColors.white,
+      backgroundColor: AppColors.grey900,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification is ScrollEndNotification &&
+              _pageController.hasClients &&
+              _pageController.position.pixels >=
+                  _pageController.position.maxScrollExtent * 0.8) {
+            _loadMoreVideos(state);
+          }
+          return false;
+        },
+        child: PageView.builder(
+          key: _pageViewKey,
+          controller: _pageController,
+          scrollDirection: Axis.vertical,
+          itemCount: _videos.length + (_hasReachedMax(state) ? 0 : 1),
+          onPageChanged: (index) {
+            if (index < _videos.length) {
+              _handlePageChange(index);
+            }
+          },
+          itemBuilder: (context, index) {
+            if (index >= _videos.length) {
+              return _buildLoadingIndicator();
+            }
+            return _buildVideoItem(_videos[index], index);
+          },
+        ),
       ),
     );
   }
@@ -331,59 +271,36 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
   }
 
   Widget _buildVideoItem(VideoEntity video, int index) {
-    final controller = _controllers[index];
-    final isInitialized = controller?.value.isInitialized ?? false;
-    final duration = controller?.value.duration ?? Duration.zero;
+    final isInitialized = isControllerInitialized(index);
+    final duration = getVideoDuration(index);
     final showProgressBar = isInitialized && duration.inSeconds > 30;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         return GestureDetector(
           onLongPressStart: (details) {
-            _startFastForward(
+            startFastForward(
               index,
               details.localPosition,
               Size(constraints.maxWidth, constraints.maxHeight),
             );
           },
-          onLongPressEnd: (_) {
-            _stopFastForward();
-          },
-          onLongPressCancel: () {
-            _stopFastForward();
-          },
+          onLongPressEnd: (_) => stopFastForward(),
+          onLongPressCancel: () => stopFastForward(),
           child: Stack(
             fit: StackFit.expand,
             children: [
               _buildVideoPlayer(video, index),
               _buildGradientOverlay(),
-              _buildVideoInfo(video),
-              _buildPlayPauseOverlay(index),
-              if (showProgressBar) _buildProgressBar(index),
-              // Fast forward indicator (2x badge)
-              if (_isFastForwarding && _fastForwardIndex == index)
-                Positioned(
-                  top: 60,
-                  right: 20,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Text(
-                      '2x',
-                      style: TextStyle(
-                        color: AppColors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+              VideoInfoWidget(video: video),
+              if (isInitialized)
+                PlayPauseOverlay(
+                  isPlaying: isVideoPlaying(index),
+                  onTap: () => togglePlayPause(index),
                 ),
+              if (showProgressBar) _buildProgressBar(index),
+              if (isFastForwarding && fastForwardIndex == index)
+                const FastForwardIndicator(),
             ],
           ),
         );
@@ -391,8 +308,33 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     );
   }
 
+  Widget _buildVideoPlayer(VideoEntity video, int index) {
+    final controller = controllers[index];
+    final isInitialized = isControllerInitialized(index);
+
+    final shouldInitialize =
+        controller == null &&
+        (index == currentPage ||
+            index == currentPage - 1 ||
+            index == currentPage + 1);
+
+    if (shouldInitialize) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !controllers.containsKey(index)) {
+          initializeController(video.videoUrl, index);
+        }
+      });
+    }
+
+    return VideoPlayerWidget(
+      controller: controller,
+      isInitialized: isInitialized,
+      onTap: () => togglePlayPause(index),
+    );
+  }
+
   Widget _buildProgressBar(int index) {
-    final controller = _controllers[index];
+    final controller = controllers[index];
     if (controller == null || !controller.value.isInitialized) {
       return const SizedBox.shrink();
     }
@@ -403,136 +345,6 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       right: 0,
       child: VideoProgressBar(controller: controller),
     );
-  }
-
-  Widget _buildVideoPlayer(VideoEntity video, int index) {
-    final controller = _controllers[index];
-    final isInitialized = controller?.value.isInitialized ?? false;
-
-    // Initialize if controller doesn't exist and it's current, previous, or next page
-    final shouldInitialize =
-        controller == null &&
-        (index == _currentPage ||
-            index == _currentPage - 1 ||
-            index == _currentPage + 1);
-
-    if (shouldInitialize) {
-      // Use WidgetsBinding to ensure we're not in build phase
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_controllers.containsKey(index)) {
-          _initializeController(video.videoUrl, index);
-        }
-      });
-    }
-
-    // Show loading while video is loading
-    if (controller == null || !isInitialized) {
-      return Container(
-        color: AppColors.black,
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.white),
-        ),
-      );
-    }
-
-    return GestureDetector(
-      onTap: () => _togglePlayPause(index),
-      child: FittedBox(
-        fit: BoxFit.cover,
-        child: SizedBox(
-          width: controller.value.size.width,
-          height: controller.value.size.height,
-          child: VideoPlayer(controller),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _initializeController(String url, int index) async {
-    if (_controllers.containsKey(index)) return;
-
-    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
-    _controllers[index] = controller;
-
-    try {
-      await controller.initialize();
-
-      if (!mounted) {
-        controller.dispose();
-        _controllers.remove(index);
-        return;
-      }
-
-      controller.setLooping(true);
-
-      // Add listener to update UI when playing state changes
-      controller.addListener(() {
-        if (mounted) {
-          setState(() {});
-        }
-      });
-
-      if (index == _currentPage) {
-        controller.play();
-      }
-
-      setState(() {});
-    } catch (e) {
-      debugPrint('Error initializing video at index $index: $e');
-      controller.dispose();
-      _controllers.remove(index);
-
-      // Retry once after a short delay
-      if (mounted) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted && !_controllers.containsKey(index)) {
-            _initializeController(url, index);
-          }
-        });
-      }
-    }
-  }
-
-  void _togglePlayPause(int index) {
-    final controller = _controllers[index];
-    if (controller == null || !controller.value.isInitialized) return;
-
-    if (controller.value.isPlaying) {
-      controller.pause();
-    } else {
-      controller.play();
-    }
-    setState(() {});
-  }
-
-  /// Handle fast forward start (2x speed on long press right side)
-  void _startFastForward(int index, Offset localPosition, Size size) {
-    // Only trigger if press is on right half of screen
-    if (localPosition.dx < size.width / 2) return;
-
-    final controller = _controllers[index];
-    if (controller == null || !controller.value.isInitialized) return;
-
-    controller.setPlaybackSpeed(2.0);
-    setState(() {
-      _isFastForwarding = true;
-      _fastForwardIndex = index;
-    });
-  }
-
-  /// Handle fast forward end (return to normal speed)
-  void _stopFastForward() {
-    if (!_isFastForwarding) return;
-
-    final controller = _controllers[_fastForwardIndex];
-    if (controller != null && controller.value.isInitialized) {
-      controller.setPlaybackSpeed(1.0);
-    }
-
-    setState(() {
-      _isFastForwarding = false;
-      _fastForwardIndex = -1;
-    });
   }
 
   Widget _buildGradientOverlay() {
@@ -550,81 +362,6 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
               Colors.transparent,
               AppColors.black.withValues(alpha: 0.8),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoInfo(VideoEntity video) {
-    // Always keep text at the same position with space reserved for progress bar
-    const bottomPadding = Sizes.videoInfoBottomPadding + 80;
-
-    return Positioned(
-      bottom: bottomPadding,
-      left: Sizes.videoInfoHorizontalPadding,
-      right: Sizes.videoInfoHorizontalPadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            video.author,
-            style: TextStyle(
-              color: AppColors.white,
-              fontSize: Sizes.font16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: Sizes.spacing8),
-          Text(
-            video.title,
-            style: TextStyle(
-              color: AppColors.white,
-              fontSize: Sizes.font14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: Sizes.spacing4),
-          Text(
-            video.description,
-            style: TextStyle(
-              color: AppColors.white.withValues(alpha: 0.8),
-              fontSize: Sizes.font12,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlayPauseOverlay(int index) {
-    final controller = _controllers[index];
-
-    if (controller == null || !controller.value.isInitialized) {
-      return const SizedBox.shrink();
-    }
-
-    final isPlaying = controller.value.isPlaying;
-
-    return GestureDetector(
-      onTap: () => _togglePlayPause(index),
-      child: Center(
-        child: AnimatedOpacity(
-          opacity: isPlaying ? 0.0 : 0.5,
-          duration: const Duration(milliseconds: 200),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.black.withValues(alpha: 0.5),
-              shape: BoxShape.circle,
-            ),
-            padding: const EdgeInsets.all(Sizes.playPauseOverlayPadding),
-            child: const Icon(
-              Icons.play_arrow,
-              color: AppColors.white,
-              size: Sizes.icon48,
-            ),
           ),
         ),
       ),
