@@ -92,6 +92,67 @@ class VideoRemoteDataSourceImpl implements VideoRemoteDataSource {
           "https://storage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
       "author": "Garage",
     },
+    {
+      "id": "byte_011",
+      "title": "Flutter Butterfly",
+      "description": "Official Flutter API test video.",
+      "video_url":
+          "https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4",
+      "author": "Flutter",
+    },
+    {
+      "id": "byte_012",
+      "title": "Flutter Bee",
+      "description": "Official Flutter API test video.",
+      "video_url":
+          "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4",
+      "author": "Flutter",
+    },
+    {
+      "id": "byte_013",
+      "title": "Bullrun",
+      "description": "Google sample video.",
+      "video_url":
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
+      "author": "Google",
+    },
+    {
+      "id": "byte_014",
+      "title": "Car for a Grand",
+      "description": "Google sample car review.",
+      "video_url":
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4",
+      "author": "Garage",
+    },
+    {
+      "id": "byte_015",
+      "title": "Sintel",
+      "description": "Open source movie sample.",
+      "video_url":
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+      "author": "Blender",
+    },
+    {
+      "id": "byte_016",
+      "title": "Sintel Trailer",
+      "description": "W3C standard test video.",
+      "video_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
+      "author": "W3C",
+    },
+    {
+      "id": "byte_017",
+      "title": "Bunny Trailer",
+      "description": "W3C standard test video.",
+      "video_url": "https://media.w3.org/2010/05/bunny/trailer.mp4",
+      "author": "W3C",
+    },
+    {
+      "id": "byte_018",
+      "title": "Big Buck Bunny W3Schools",
+      "description": "W3Schools HTML video test.",
+      "video_url": "https://www.w3schools.com/html/mov_bbb.mp4",
+      "author": "W3Schools",
+    },
   ];
 
   @override
