@@ -176,6 +176,20 @@ The app provides robust offline/online handling:
 - Automatic cleanup of distant controllers
 - Smooth back-navigation experience
 
+## Video Player Limitations
+
+The app uses Flutter's `video_player` package which has some inherent limitations:
+
+- **No Pre-buffering**: Videos cannot be pre-loaded in the background. Each video is initialized only when it becomes visible, causing a brief loading state when scrolling to new videos.
+
+- **Memory Constraints**: Each video controller consumes significant memory, limiting us to caching ~10 controllers. Controllers outside the visible range (±5 videos) are automatically disposed.
+
+- **Main Thread Initialization**: VideoPlayerController must be initialized on the main thread with the widget mounted in the tree, preventing background pre-loading.
+
+- **Manual Lifecycle Management**: Controllers must be carefully disposed when widgets unmount to avoid memory leaks.
+
+- **No Native Preload**: Unlike native solutions (ExoPlayer on Android, AVPlayer on iOS), Flutter's video_player doesn't support background preloading of multiple videos.
+
 ## Building for Production
 
 ```bash
