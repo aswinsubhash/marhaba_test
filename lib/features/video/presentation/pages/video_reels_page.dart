@@ -340,7 +340,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     }
 
     return Positioned(
-      bottom: 50,
+      bottom: Sizes.progressBarBottomPosition,
       left: 0,
       right: 0,
       child: VideoProgressBar(controller: controller),

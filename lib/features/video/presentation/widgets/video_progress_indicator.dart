@@ -13,7 +13,7 @@ class VideoProgressBar extends StatefulWidget {
     this.backgroundColor = AppColors.grey900,
     this.playedColor = AppColors.white,
     this.bufferedColor = AppColors.grey,
-    this.height = 3.0,
+    this.height = Sizes.progressBarHeight,
   });
 
   @override
@@ -104,9 +104,8 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Account for horizontal padding in width calculations
-        const horizontalPadding = 16.0;
-        final barWidth = constraints.maxWidth - (horizontalPadding * 2);
+        final barWidth =
+            constraints.maxWidth - (Sizes.progressBarHorizontalPadding * 2);
 
         return GestureDetector(
           onTapDown: (details) => _onTapDown(details, barWidth),
@@ -116,16 +115,17 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
           onHorizontalDragEnd: _onHorizontalDragEnd,
           child: Container(
             color: Colors.transparent,
-            height: 24,
-            padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
+            height: Sizes.progressBarTouchArea,
+            padding: const EdgeInsets.symmetric(
+              horizontal: Sizes.progressBarHorizontalPadding,
+            ),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Background bar - full width
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: 10.5,
+                  top: Sizes.progressBarTopPosition,
                   child: Container(
                     height: widget.height,
                     decoration: BoxDecoration(
@@ -134,18 +134,16 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
                     ),
                   ),
                 ),
-                // Buffered progress ranges
                 ...buffered.map((range) {
                   final start =
                       range.start.inMilliseconds / duration.inMilliseconds;
                   final end =
                       range.end.inMilliseconds / duration.inMilliseconds;
-                  // Clamp values to ensure they stay within bounds
                   final clampedStart = start.clamp(0.0, 1.0);
                   final clampedEnd = end.clamp(0.0, 1.0);
                   return Positioned(
                     left: barWidth * clampedStart,
-                    top: 10.5,
+                    top: Sizes.progressBarTopPosition,
                     child: Container(
                       height: widget.height,
                       width: barWidth * (clampedEnd - clampedStart),
@@ -156,10 +154,9 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
                     ),
                   );
                 }),
-                // Played progress - starting from left
                 Positioned(
                   left: 0,
-                  top: 10.5,
+                  top: Sizes.progressBarTopPosition,
                   child: Container(
                     height: widget.height,
                     width: barWidth * progress.clamp(0.0, 1.0),

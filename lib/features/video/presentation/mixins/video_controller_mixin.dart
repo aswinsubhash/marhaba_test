@@ -40,7 +40,7 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
       controllers.remove(index);
 
       if (mounted) {
-        Future.delayed(const Duration(milliseconds: 500), () {
+        Future.delayed(Duration(milliseconds: Sizes.videoRetryDelayMs), () {
           if (mounted && !controllers.containsKey(index)) {
             initializeController(url, index);
           }
@@ -86,14 +86,13 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
   }
 
   void cleanupDistantControllers(int currentPageIndex) {
-    if (controllers.length <= 10) return;
+    if (controllers.length <= Sizes.videoCacheMaxControllers) return;
 
     final indicesToRemove = <int>[];
-    const keepRange = 5;
 
     for (final index in controllers.keys) {
-      if (index < currentPageIndex - keepRange ||
-          index > currentPageIndex + keepRange) {
+      if (index < currentPageIndex - Sizes.videoCacheKeepRange ||
+          index > currentPageIndex + Sizes.videoCacheKeepRange) {
         indicesToRemove.add(index);
       }
     }
@@ -112,7 +111,7 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
     final controller = controllers[index];
     if (controller == null || !controller.value.isInitialized) return;
 
-    controller.setPlaybackSpeed(2.0);
+    controller.setPlaybackSpeed(Sizes.videoFastForwardSpeed);
     setState(() {
       isFastForwarding = true;
       fastForwardIndex = index;
