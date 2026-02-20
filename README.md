@@ -188,7 +188,7 @@ The app uses Flutter's `video_player` package which has some inherent limitation
 
 - **Manual Lifecycle Management**: Controllers must be carefully disposed when widgets unmount to avoid memory leaks.
 
-- **No Native Preload**: Unlike native solutions (ExoPlayer on Android, AVPlayer on iOS), Flutter's video_player doesn't support background preloading of multiple videos.
+- **No Native Preload**: Unlike native solutions (AndroidX Media3 on Android, AVPlayer on iOS), Flutter's video_player doesn't support background preloading of multiple videos.
 
 ## Building for Production
 
