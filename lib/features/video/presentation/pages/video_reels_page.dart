@@ -314,9 +314,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
 
     final shouldInitialize =
         controller == null &&
-        (index == currentPage ||
-            index == currentPage - 1 ||
-            index == currentPage + 1);
+        (index >= currentPage - 2 && index <= currentPage + 2);
 
     if (shouldInitialize) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
