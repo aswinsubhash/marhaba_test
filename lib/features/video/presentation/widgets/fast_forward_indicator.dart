@@ -6,13 +6,16 @@ class FastForwardIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: 60,
-      right: 20,
+      top: Sizes.fastForwardTopPosition,
+      right: Sizes.fastForwardRightPosition,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Sizes.spacing12,
+          vertical: Sizes.spacing4,
+        ),
         decoration: BoxDecoration(
           color: AppColors.white.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(Sizes.fastForwardBadgeRadius),
         ),
         child: const Text(
           '2x',

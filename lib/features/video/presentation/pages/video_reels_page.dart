@@ -314,9 +314,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
 
     final shouldInitialize =
         controller == null &&
-        (index == currentPage ||
-            index == currentPage - 1 ||
-            index == currentPage + 1);
+        (index >= currentPage - 2 && index <= currentPage + 2);
 
     if (shouldInitialize) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -340,7 +338,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     }
 
     return Positioned(
-      bottom: 50,
+      bottom: Sizes.progressBarBottomPosition,
       left: 0,
       right: 0,
       child: VideoProgressBar(controller: controller),

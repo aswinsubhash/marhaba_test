@@ -20,43 +20,48 @@ class VideoRepositoryImpl implements VideoRepository {
     required int limit,
   }) async {
     try {
-      // Fetch from remote
       final remoteVideos = await remoteDataSource.getVideos(
         page: page,
         limit: limit,
       );
 
-      // If first page, replace cache; otherwise append to cache
-      if (page == 1) {
-        await localDataSource.cacheVideos(remoteVideos);
-      } else {
-        // Get existing cached videos and append new ones
-        final cachedVideos = await localDataSource.getCachedVideos();
-        final allVideos = [...cachedVideos, ...remoteVideos];
-        await localDataSource.cacheVideos(allVideos);
-      }
+      await _updateCache(remoteVideos, page);
 
       return (videos: remoteVideos, failure: null);
     } catch (e) {
-      // On error, try to return cached data if available
-      try {
-        final cachedVideos = await localDataSource.getCachedVideos();
-        if (cachedVideos.isNotEmpty) {
-          final startIndex = (page - 1) * limit;
-          final endIndex = startIndex + limit;
-          if (startIndex < cachedVideos.length) {
-            final paginatedVideos = cachedVideos.sublist(
-              startIndex,
-              endIndex > cachedVideos.length ? cachedVideos.length : endIndex,
-            );
-            return (videos: paginatedVideos, failure: null);
-          }
-        }
-      } catch (_) {
-        // Ignore cache errors
+      final cachedResult = await _getFromCache(page, limit);
+      if (cachedResult != null) {
+        return (videos: cachedResult, failure: null);
       }
-
       return (videos: null, failure: ServerFailure(message: e.toString()));
+    }
+  }
+
+  Future<void> _updateCache(List<VideoModel> remoteVideos, int page) async {
+    if (page == 1) {
+      await localDataSource.cacheVideos(remoteVideos);
+    } else {
+      final cachedVideos = await localDataSource.getCachedVideos();
+      final allVideos = [...cachedVideos, ...remoteVideos];
+      await localDataSource.cacheVideos(allVideos);
+    }
+  }
+
+  Future<List<VideoEntity>?> _getFromCache(int page, int limit) async {
+    try {
+      final cachedVideos = await localDataSource.getCachedVideos();
+      if (cachedVideos.isEmpty) return null;
+
+      final startIndex = (page - 1) * limit;
+      if (startIndex >= cachedVideos.length) return null;
+
+      final endIndex = startIndex + limit;
+      return cachedVideos.sublist(
+        startIndex,
+        endIndex > cachedVideos.length ? cachedVideos.length : endIndex,
+      );
+    } catch (_) {
+      return null;
     }
   }
 
