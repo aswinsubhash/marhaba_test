@@ -9,7 +9,6 @@ A Flutter application that displays video content in a reels-style vertical scro
 - **Video Progress Indicator**: Interactive progress bar for videos longer than 30 seconds
   - Tap to seek to any position
   - Drag to scrub through video
-  - Buffered progress visualization
   - Automatic show/hide based on video duration
 - **Pagination**: Load more videos as you scroll
 - **Lazy Loading**: Videos are loaded on demand for better performance

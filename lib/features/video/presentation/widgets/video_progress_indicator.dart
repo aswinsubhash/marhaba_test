@@ -4,7 +4,6 @@ class VideoProgressBar extends StatefulWidget {
   final VideoPlayerController controller;
   final Color backgroundColor;
   final Color playedColor;
-  final Color bufferedColor;
   final double height;
 
   const VideoProgressBar({
@@ -12,7 +11,6 @@ class VideoProgressBar extends StatefulWidget {
     required this.controller,
     this.backgroundColor = AppColors.grey900,
     this.playedColor = AppColors.white,
-    this.bufferedColor = AppColors.grey,
     this.height = Sizes.progressBarHeight,
   });
 
@@ -97,9 +95,6 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
       return const SizedBox.shrink();
     }
 
-    final duration = widget.controller.value.duration;
-    final buffered = widget.controller.value.buffered;
-
     final progress = _isDragging ? _dragProgress : _getCurrentProgress();
 
     return LayoutBuilder(
@@ -134,26 +129,6 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
                     ),
                   ),
                 ),
-                ...buffered.map((range) {
-                  final start =
-                      range.start.inMilliseconds / duration.inMilliseconds;
-                  final end =
-                      range.end.inMilliseconds / duration.inMilliseconds;
-                  final clampedStart = start.clamp(0.0, 1.0);
-                  final clampedEnd = end.clamp(0.0, 1.0);
-                  return Positioned(
-                    left: barWidth * clampedStart,
-                    top: Sizes.progressBarTopPosition,
-                    child: Container(
-                      height: widget.height,
-                      width: barWidth * (clampedEnd - clampedStart),
-                      decoration: BoxDecoration(
-                        color: widget.bufferedColor,
-                        borderRadius: BorderRadius.circular(widget.height / 2),
-                      ),
-                    ),
-                  );
-                }),
                 Positioned(
                   left: 0,
                   top: Sizes.progressBarTopPosition,
