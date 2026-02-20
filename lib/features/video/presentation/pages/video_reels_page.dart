@@ -123,9 +123,35 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
     // Play new video from start
     _playVideoFromStart(newPage);
 
+    // Clean up distant controllers to prevent memory bloat
+    _cleanupDistantControllers(newPage);
+
     setState(() {
       _currentPage = newPage;
     });
+  }
+
+  /// Dispose controllers that are far from current position
+  /// Keeps memory usage bounded while maintaining smooth scrolling
+  void _cleanupDistantControllers(int currentPage) {
+    // Only cleanup if we have more than 5 controllers
+    if (_controllers.length <= 5) return;
+
+    final indicesToRemove = <int>[];
+    const keepRange = 2; // Keep current ± 2
+
+    for (final index in _controllers.keys) {
+      if (index < currentPage - keepRange || index > currentPage + keepRange) {
+        indicesToRemove.add(index);
+      }
+    }
+
+    for (final index in indicesToRemove) {
+      final controller = _controllers.remove(index);
+      controller?.pause();
+      controller?.dispose();
+      debugPrint('Cleaned up controller at index $index');
+    }
   }
 
   void _playVideoFromStart(int index) {
@@ -351,6 +377,7 @@ class _VideoReelsPageState extends State<VideoReelsPage> {
       });
     }
 
+    // Show loading while video is loading
     if (controller == null || !isInitialized) {
       return Container(
         color: AppColors.black,
