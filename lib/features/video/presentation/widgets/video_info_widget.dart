@@ -8,12 +8,13 @@ class VideoInfoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const bottomPadding = Sizes.videoInfoBottomPadding + 80;
+    const bottomPadding =
+        AppConstants.videoInfoBottomPadding + AppConstants.videoInfoExtraBottomPadding;
 
     return Positioned(
       bottom: bottomPadding,
-      left: Sizes.videoInfoHorizontalPadding,
-      right: Sizes.videoInfoHorizontalPadding,
+      left: AppConstants.videoInfoHorizontalPadding,
+      right: AppConstants.videoInfoHorizontalPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -21,25 +22,25 @@ class VideoInfoWidget extends StatelessWidget {
             video.author,
             style: const TextStyle(
               color: AppColors.white,
-              fontSize: Sizes.font16,
+              fontSize: AppConstants.font16,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: Sizes.spacing8),
+          const SizedBox(height: AppConstants.spacing8),
           Text(
             video.title,
             style: const TextStyle(
               color: AppColors.white,
-              fontSize: Sizes.font14,
+              fontSize: AppConstants.font14,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: Sizes.spacing4),
+          const SizedBox(height: AppConstants.spacing4),
           Text(
             video.description,
             style: TextStyle(
               color: AppColors.white.withValues(alpha: 0.8),
-              fontSize: Sizes.font12,
+              fontSize: AppConstants.font12,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

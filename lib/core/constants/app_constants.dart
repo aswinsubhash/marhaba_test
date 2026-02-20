@@ -1,4 +1,4 @@
-class Sizes {
+class AppConstants {
   // Spacing
   static const double spacing4 = 4.0;
   static const double spacing8 = 8.0;
@@ -19,8 +19,12 @@ class Sizes {
   static const double icon48 = 48.0;
   static const double icon80 = 80.0;
 
+  // Border Radius
+  static const double radius8 = 8.0;
+  static const double radius16 = 16.0;
+  static const double radius30 = 30.0;
+
   // Button
-  static const double buttonRadius30 = 30.0;
   static const double buttonHorizontalPadding = 32.0;
   static const double buttonVerticalPadding = 12.0;
 
@@ -29,6 +33,7 @@ class Sizes {
   static const double videoInfoBottomPadding = 20.0;
   static const double videoInfoHorizontalPadding = 16.0;
   static const double playPauseOverlayPadding = 20.0;
+  static const double videoInfoExtraBottomPadding = 80.0;
 
   // Error Widget
   static const double errorIconSize = 48.0;
@@ -36,7 +41,6 @@ class Sizes {
   // Fast Forward Indicator
   static const double fastForwardTopPosition = 60.0;
   static const double fastForwardRightPosition = 20.0;
-  static const double fastForwardBadgeRadius = 16.0;
 
   // Progress Bar
   static const double progressBarBottomPosition = 50.0;
@@ -44,6 +48,9 @@ class Sizes {
   static const double progressBarTouchArea = 24.0;
   static const double progressBarTopPosition = 10.5;
   static const double progressBarHorizontalPadding = 16.0;
+
+  // Animation Durations
+  static const int animationDuration200ms = 200;
 
   // Video Cache
   static const int videoCacheKeepRange = 5;

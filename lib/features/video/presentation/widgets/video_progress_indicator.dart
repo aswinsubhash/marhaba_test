@@ -11,7 +11,7 @@ class VideoProgressBar extends StatefulWidget {
     required this.controller,
     this.backgroundColor = AppColors.grey900,
     this.playedColor = AppColors.white,
-    this.height = Sizes.progressBarHeight,
+    this.height = AppConstants.progressBarHeight,
   });
 
   @override
@@ -100,7 +100,7 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final barWidth =
-            constraints.maxWidth - (Sizes.progressBarHorizontalPadding * 2);
+            constraints.maxWidth - (AppConstants.progressBarHorizontalPadding * 2);
 
         return GestureDetector(
           onTapDown: (details) => _onTapDown(details, barWidth),
@@ -110,9 +110,9 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
           onHorizontalDragEnd: _onHorizontalDragEnd,
           child: Container(
             color: Colors.transparent,
-            height: Sizes.progressBarTouchArea,
+            height: AppConstants.progressBarTouchArea,
             padding: const EdgeInsets.symmetric(
-              horizontal: Sizes.progressBarHorizontalPadding,
+              horizontal: AppConstants.progressBarHorizontalPadding,
             ),
             child: Stack(
               clipBehavior: Clip.none,
@@ -120,7 +120,7 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: Sizes.progressBarTopPosition,
+                  top: AppConstants.progressBarTopPosition,
                   child: Container(
                     height: widget.height,
                     decoration: BoxDecoration(
@@ -131,7 +131,7 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
                 ),
                 Positioned(
                   left: 0,
-                  top: Sizes.progressBarTopPosition,
+                  top: AppConstants.progressBarTopPosition,
                   child: Container(
                     height: widget.height,
                     width: barWidth * progress.clamp(0.0, 1.0),

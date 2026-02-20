@@ -16,26 +16,26 @@ class NoInternetWidget extends StatelessWidget {
             Icon(
               Icons.wifi_off_rounded,
               color: AppColors.white54,
-              size: Sizes.icon80,
+              size: AppConstants.icon80,
             ),
-            const SizedBox(height: Sizes.spacing24),
+            const SizedBox(height: AppConstants.spacing24),
             Text(
               Strings.noInternetTitle,
               style: TextStyle(
                 color: AppColors.white,
-                fontSize: Sizes.font20,
+                fontSize: AppConstants.font20,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: Sizes.spacing12),
+            const SizedBox(height: AppConstants.spacing12),
             Text(
               Strings.noInternetMessage,
               style: TextStyle(
                 color: AppColors.white70,
-                fontSize: Sizes.font14,
+                fontSize: AppConstants.font14,
               ),
             ),
-            const SizedBox(height: Sizes.spacing32),
+            const SizedBox(height: AppConstants.spacing32),
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
@@ -44,11 +44,11 @@ class NoInternetWidget extends StatelessWidget {
                 backgroundColor: AppColors.white,
                 foregroundColor: AppColors.black,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: Sizes.buttonHorizontalPadding,
-                  vertical: Sizes.buttonVerticalPadding,
+                  horizontal: AppConstants.buttonHorizontalPadding,
+                  vertical: AppConstants.buttonVerticalPadding,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Sizes.buttonRadius30),
+                  borderRadius: BorderRadius.circular(AppConstants.radius30),
                 ),
               ),
             ),
