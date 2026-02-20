@@ -23,7 +23,7 @@ A Flutter application that displays video content in a reels-style vertical scro
 - **Dependency Injection**: Using get_it for dependency management
 - **Error Handling**: Graceful error handling with retry functionality
 - **Pull to Refresh**: Refresh video content with pull-down gesture
-- **Centralized Constants**: Organized constants for colors, sizes, and strings
+- **Centralized Constants**: Organized constants for colors, sizes, strings, and app configuration
 
 ## Architecture
 
@@ -33,8 +33,8 @@ This project follows Clean Architecture principles with three main layers:
 lib/
 ├── core/
 │   ├── constants/
+│   │   ├── app_constants.dart       # App constants (sizes, durations, config)
 │   │   ├── colors.dart              # App color constants
-│   │   ├── sizes.dart               # Size constants
 │   │   └── strings.dart             # String constants
 │   ├── errors/
 │   │   └── failures.dart            # Error handling classes
@@ -182,10 +182,6 @@ The app provides robust offline/online handling:
 flutter build apk --release  # Android
 flutter build ios --release  # iOS
 ```
-
-## License
-
-This project is open source and available under the MIT License.
 
 ## Author
 
