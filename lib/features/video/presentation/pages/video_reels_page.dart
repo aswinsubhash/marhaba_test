@@ -240,15 +240,15 @@ class _VideoReelsPageState extends State<VideoReelsPage>
           Icon(
             Icons.error_outline,
             color: AppColors.red,
-            size: Sizes.errorIconSize,
+            size: AppConstants.errorIconSize,
           ),
-          const SizedBox(height: Sizes.spacing16),
+          const SizedBox(height: AppConstants.spacing16),
           Text(
             message,
             style: const TextStyle(color: AppColors.white),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: Sizes.spacing16),
+          const SizedBox(height: AppConstants.spacing16),
           ElevatedButton(
             onPressed: () {
               context.read<VideoBloc>().add(const LoadVideos());
@@ -332,7 +332,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     }
 
     return Positioned(
-      bottom: Sizes.progressBarBottomPosition,
+      bottom: AppConstants.progressBarBottomPosition,
       left: 0,
       right: 0,
       child: VideoProgressBar(controller: controller),
@@ -345,7 +345,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
       left: 0,
       right: 0,
       child: Container(
-        height: Sizes.gradientOverlayHeight,
+        height: AppConstants.gradientOverlayHeight,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,

@@ -11,6 +11,9 @@ class Strings {
   // Videos
   static const String noVideosAvailable = 'No videos available';
 
+  // Fast Forward
+  static const String fastForwardSpeed2x = '2x';
+
   // Errors
   static const String unknownError = 'Unknown error occurred';
   static const String serverError = 'Server error occurred';
