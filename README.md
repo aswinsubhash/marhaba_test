@@ -2,6 +2,12 @@
 
 A Flutter application that displays video content in a reels-style vertical scrolling format with pagination, lazy loading, caching capabilities, and robust offline/online connectivity handling.
 
+## Requirements
+
+- **Flutter SDK**: 3.41.0 (channel stable)
+- **Dart SDK**: 3.11.0
+- **DevTools**: 2.54.1
+
 ## Features
 
 - **Reels-style Video Player**: Smooth vertical scrolling video playback experience
@@ -188,7 +194,26 @@ The app uses Flutter's `video_player` package which has some inherent limitation
 
 - **Manual Lifecycle Management**: Controllers must be carefully disposed when widgets unmount to avoid memory leaks.
 
-- **No Native Preload**: Unlike native solutions (AndroidX Media3 on Android, AVPlayer on iOS), Flutter's video_player doesn't support background preloading of multiple videos.
+- **No Native Preload**: Unlike native solutions (ExoPlayer on Android, AVPlayer on iOS), Flutter's video_player doesn't support background preloading of multiple videos.
+
+## Android Emulator Limitations
+
+When running the app on an Android emulator, you may encounter the following issues with video playback:
+
+- **Video Controller Initialization Failures**: Android emulators (especially older API levels) may fail to initialize video controllers properly. This is due to limited hardware acceleration support in the emulator.
+
+- **Black Screen or No Video**: Some emulators may show a black screen or fail to render video content. This is a known issue with the emulator's video decoding capabilities.
+
+- **Slow Video Loading**: Video initialization and buffering can be significantly slower on emulators compared to physical devices.
+
+- **Memory Pressure**: Emulators have limited resources, which may cause video controllers to be disposed more frequently.
+
+### Recommendations:
+1. **Use iOS Simulator**: For a clean run without video playback issues, use the iOS Simulator.
+2. **Use a Physical Device**: For best results, test video playback on a physical Android or iOS device.
+3. **Use API Level 29+**: If you must use an Android emulator, use an AVD with API level 29 (Android 10) or higher.
+4. **Enable Hardware Acceleration**: Ensure your emulator has hardware acceleration enabled (uses host GPU).
+5. **Use x86_64 Images**: x86_64 system images tend to have better performance and video support.
 
 ## Building for Production
 
