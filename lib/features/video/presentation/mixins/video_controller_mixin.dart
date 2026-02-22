@@ -2,24 +2,32 @@ import '../../../../core/exports.dart';
 
 mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
   final Map<int, VideoPlayerController> controllers = {};
+  final Set<int> _initializingControllers = {};
   int currentPage = 0;
   bool isFastForwarding = false;
   int fastForwardIndex = -1;
 
   Future<void> initializeController(String url, int index) async {
-    if (controllers.containsKey(index)) return;
+    if (controllers.containsKey(index) ||
+        _initializingControllers.contains(index)) {
+      return;
+    }
+
+    _initializingControllers.add(index);
 
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
-    controllers[index] = controller;
 
     try {
       await controller.initialize();
 
       if (!mounted) {
         controller.dispose();
-        controllers.remove(index);
+        _initializingControllers.remove(index);
         return;
       }
+
+      controllers[index] = controller;
+      _initializingControllers.remove(index);
 
       controller.setLooping(true);
 
@@ -34,7 +42,7 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
       }
     } catch (e) {
       controller.dispose();
-      controllers.remove(index);
+      _initializingControllers.remove(index);
 
       if (mounted) {
         Future.delayed(
@@ -75,6 +83,7 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
       controller.dispose();
     }
     controllers.clear();
+    _initializingControllers.clear();
   }
 
   Future<void> playVideoFromStart(int index) async {
