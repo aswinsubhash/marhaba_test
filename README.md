@@ -196,6 +196,22 @@ The app uses Flutter's `video_player` package which has some inherent limitation
 
 - **No Native Preload**: Unlike native solutions (ExoPlayer on Android, AVPlayer on iOS), Flutter's video_player doesn't support background preloading of multiple videos.
 
+- **Third-Party Package Issues**: We explored `better_player` as an alternative with built-in caching, but it's not compatible with Flutter 3.11+ due to deprecated `hashValues` method usage.
+
+### 🚧 Work in Progress: native_reels_player
+
+I am currently developing a new Flutter plugin called **native_reels_player** to address these limitations:
+
+- **Android**: Uses ExoPlayer for efficient video preloading and caching
+- **iOS**: Uses AVPlayer with preload support
+- **Features**:
+  - Native preloading of a configurable range of videos
+  - Better memory management with native-level caching
+  - Smooth scrolling experience without loading indicators
+  - Background video initialization
+
+The plugin will be published on pub.dev once development is complete. Stay tuned for updates!
+
 ## Android Emulator Limitations
 
 When running the app on an Android emulator, you may encounter the following issues with video playback:
