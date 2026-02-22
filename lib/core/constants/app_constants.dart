@@ -57,4 +57,10 @@ class AppConstants {
   static const int videoCacheMaxControllers = 10;
   static const int videoRetryDelayMs = 500;
   static const double videoFastForwardSpeed = 2.0;
+
+  // Skeleton Loader
+  static const double skeletonAuthorWidth = 120.0;
+  static const double skeletonTitleWidth = 200.0;
+  static const double skeletonDescriptionWidth = 280.0;
+  static const int skeletonAnimationDurationMs = 1500;
 }
