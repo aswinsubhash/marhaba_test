@@ -10,6 +10,7 @@ import '../widgets/play_pause_overlay.dart';
 import '../widgets/video_info_widget.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/video_progress_indicator.dart';
+import '../widgets/video_skeleton_loader.dart';
 
 class VideoReelsPage extends StatefulWidget {
   const VideoReelsPage({super.key});
@@ -159,9 +160,7 @@ class _VideoReelsPageState extends State<VideoReelsPage>
           }
 
           if (_isReconnecting || state is VideoLoading || _videos.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.white),
-            );
+            return const VideoSkeletonLoader();
           }
 
           if (state is VideoError) {

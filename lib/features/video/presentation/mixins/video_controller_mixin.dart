@@ -32,18 +32,19 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
       if (index == currentPage) {
         controller.play();
       }
-
-      setState(() {});
     } catch (e) {
       controller.dispose();
       controllers.remove(index);
 
       if (mounted) {
-        Future.delayed(Duration(milliseconds: AppConstants.videoRetryDelayMs), () {
-          if (mounted && !controllers.containsKey(index)) {
-            initializeController(url, index);
-          }
-        });
+        Future.delayed(
+          Duration(milliseconds: AppConstants.videoRetryDelayMs),
+          () {
+            if (mounted && !controllers.containsKey(index)) {
+              initializeController(url, index);
+            }
+          },
+        );
       }
     }
   }
@@ -76,11 +77,13 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
     controllers.clear();
   }
 
-  void playVideoFromStart(int index) {
+  Future<void> playVideoFromStart(int index) async {
     final controller = controllers[index];
     if (controller != null && controller.value.isInitialized) {
-      controller.seekTo(Duration.zero);
-      controller.play();
+      await controller.seekTo(Duration.zero);
+      if (mounted) {
+        controller.play();
+      }
     }
   }
 
