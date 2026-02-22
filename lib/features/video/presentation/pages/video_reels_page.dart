@@ -34,7 +34,6 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     super.initState();
     _checkInternetAndLoad();
     _listenToConnectivity();
-    _pageController.addListener(_onPageChanged);
   }
 
   @override
@@ -84,10 +83,8 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     disposeAllControllers();
     currentPage = 0;
 
-    _pageController.removeListener(_onPageChanged);
     _pageController.dispose();
     _pageController = PageController();
-    _pageController.addListener(_onPageChanged);
 
     _pageViewKey = UniqueKey();
 
@@ -96,14 +93,6 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     });
 
     context.read<VideoBloc>().add(const LoadVideos());
-  }
-
-  void _onPageChanged() {
-    if (!_pageController.hasClients) return;
-    final newPage = _pageController.page?.round() ?? 0;
-    if (newPage != currentPage) {
-      _handlePageChange(newPage);
-    }
   }
 
   void _handlePageChange(int newPage) {
