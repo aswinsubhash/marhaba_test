@@ -35,3 +35,12 @@ class RefreshVideos extends VideoEvent {
   @override
   List<Object?> get props => [limit];
 }
+
+class ConnectivityChanged extends VideoEvent {
+  final bool isConnected;
+
+  const ConnectivityChanged(this.isConnected);
+
+  @override
+  List<Object?> get props => [isConnected];
+}
