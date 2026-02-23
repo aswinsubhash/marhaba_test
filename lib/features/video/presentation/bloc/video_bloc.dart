@@ -10,6 +10,7 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
     on<LoadVideos>(_onLoadVideos);
     on<LoadMoreVideos>(_onLoadMoreVideos);
     on<RefreshVideos>(_onRefreshVideos);
+    on<ConnectivityChanged>(_onConnectivityChanged);
   }
 
   Future<void> _onLoadVideos(LoadVideos event, Emitter<VideoState> emit) async {
@@ -93,6 +94,22 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
           message: result.failure?.message ?? Strings.unknownError,
         ),
       );
+    }
+  }
+
+  void _onConnectivityChanged(
+    ConnectivityChanged event,
+    Emitter<VideoState> emit,
+  ) {
+    final currentState = state;
+
+    if (!event.isConnected) {
+      emit(const VideoNoInternet());
+    } else {
+      if (currentState is VideoNoInternet) {
+        emit(VideoLoading.create(isReconnecting: true));
+        add(const LoadVideos());
+      }
     }
   }
 }

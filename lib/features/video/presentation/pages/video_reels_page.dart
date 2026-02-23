@@ -10,6 +10,7 @@ import '../widgets/play_pause_overlay.dart';
 import '../widgets/video_info_widget.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/video_progress_indicator.dart';
+import '../widgets/error_widget.dart';
 import '../widgets/video_skeleton_loader.dart';
 
 class VideoReelsPage extends StatefulWidget {
@@ -21,19 +22,33 @@ class VideoReelsPage extends StatefulWidget {
 
 class _VideoReelsPageState extends State<VideoReelsPage>
     with VideoControllerMixin {
-  PageController _pageController = PageController();
-  List<VideoEntity> _videos = [];
-  bool _hasInternet = true;
-  bool _isReconnecting = false;
-  bool _wasDisconnected = false;
+  var _pageController = PageController();
+  final _networkInfo = sl<NetworkInfo>();
   StreamSubscription<bool>? _connectivitySubscription;
-  UniqueKey _pageViewKey = UniqueKey();
 
   @override
   void initState() {
     super.initState();
-    _checkInternetAndLoad();
-    _listenToConnectivity();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final hasInternet = await _networkInfo.isConnected;
+    if (mounted) {
+      if (hasInternet) {
+        context.read<VideoBloc>().add(const LoadVideos());
+      } else {
+        context.read<VideoBloc>().add(const ConnectivityChanged(false));
+      }
+    }
+
+    _connectivitySubscription = _networkInfo.onConnectivityChanged.listen((
+      connected,
+    ) {
+      if (mounted) {
+        context.read<VideoBloc>().add(ConnectivityChanged(connected));
+      }
+    });
   }
 
   @override
@@ -44,261 +59,114 @@ class _VideoReelsPageState extends State<VideoReelsPage>
     super.dispose();
   }
 
-  Future<void> _checkInternetAndLoad() async {
-    final networkInfo = sl<NetworkInfo>();
-    final isConnected = await networkInfo.isConnected;
-    if (!mounted) return;
-    setState(() {
-      _hasInternet = isConnected;
-    });
-    if (_hasInternet && mounted) {
-      context.read<VideoBloc>().add(const LoadVideos());
-    }
-  }
-
-  void _listenToConnectivity() {
-    final networkInfo = sl<NetworkInfo>();
-    _connectivitySubscription = networkInfo.onConnectivityChanged.listen((
-      isConnected,
-    ) {
-      if (!mounted) return;
-
-      if (!isConnected) {
-        pauseAllVideos();
-        setState(() {
-          _hasInternet = false;
-          _isReconnecting = false;
-          _wasDisconnected = true;
-        });
-      } else if (_wasDisconnected) {
-        setState(() {
-          _isReconnecting = true;
-        });
-        _handleReconnection();
-      }
-    });
-  }
-
-  void _handleReconnection() {
-    disposeAllControllers();
-    currentPage = 0;
-
-    _pageController.dispose();
-    _pageController = PageController();
-
-    _pageViewKey = UniqueKey();
-
-    setState(() {
-      _videos = [];
-    });
-
-    context.read<VideoBloc>().add(const LoadVideos());
-  }
-
-  void _handlePageChange(int newPage) {
-    controllers[currentPage]?.pause();
-    playVideoFromStart(newPage);
-    cleanupDistantControllers(newPage);
-
-    if (_videos.length - newPage <= 1) {
-      final state = context.read<VideoBloc>().state;
-      _loadMoreVideos(state);
-    }
-
-    setState(() {
-      currentPage = newPage;
-    });
-  }
-
-  Future<void> _retryInternetConnection() async {
-    final networkInfo = sl<NetworkInfo>();
-    final isConnected = await networkInfo.isConnected;
-    if (isConnected && mounted) {
-      setState(() {
-        _isReconnecting = true;
-      });
-      _handleReconnection();
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.black,
-      body: BlocConsumer<VideoBloc, VideoState>(
-        listener: (context, state) {
-          if (state is VideoLoaded) {
-            setState(() {
-              _videos = state.videos;
-              _hasInternet = true;
-              _isReconnecting = false;
-            });
-          } else if (state is VideoLoadingMore) {
-            setState(() {
-              _videos = state.videos;
-            });
-          } else if (state is VideoError) {
-            setState(() {
-              _isReconnecting = false;
-            });
-          }
-        },
-        builder: (context, state) {
-          if (!_hasInternet) {
-            return NoInternetWidget(onRetry: _retryInternetConnection);
-          }
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.black,
+    body: BlocConsumer<VideoBloc, VideoState>(
+      listener: _handleListener,
+      builder: _buildBody,
+    ),
+  );
 
-          if (_isReconnecting || state is VideoLoading || _videos.isEmpty) {
-            return const VideoSkeletonLoader();
-          }
-
-          if (state is VideoError) {
-            return _buildErrorWidget(state.message);
-          }
-
-          if (_videos.isNotEmpty) {
-            return _buildPageView(state);
-          }
-
-          return Center(
-            child: Text(
-              Strings.noVideosAvailable,
-              style: const TextStyle(color: AppColors.white),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildPageView(VideoState state) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        currentPage = 0;
-        disposeAllControllers();
-
-        if (_pageController.hasClients) {
-          _pageController.jumpToPage(0);
-        }
-
-        context.read<VideoBloc>().add(const RefreshVideos());
-      },
-      color: AppColors.white,
-      backgroundColor: AppColors.grey900,
-      child: PageView.builder(
-        key: _pageViewKey,
-        controller: _pageController,
-        scrollDirection: Axis.vertical,
-        itemCount: _videos.length + (_hasReachedMax(state) ? 0 : 1),
-        onPageChanged: (index) {
-          if (index < _videos.length) {
-            _handlePageChange(index);
-          }
-        },
-        itemBuilder: (context, index) {
-          if (index >= _videos.length) {
-            return _buildLoadingIndicator();
-          }
-          return _buildVideoItem(_videos[index], index);
-        },
-      ),
-    );
-  }
-
-  bool _hasReachedMax(VideoState state) {
+  void _handleListener(BuildContext context, VideoState state) {
     if (state is VideoLoaded) {
-      return state.hasReachedMax;
+      if (state.isReconnecting) {
+        _pageController.dispose();
+        _pageController = PageController();
+        disposeAllControllers();
+        currentPage = 0;
+      }
+    } else if (state is VideoNoInternet) {
+      pauseAllVideos();
     }
-    return false;
   }
 
-  void _loadMoreVideos(VideoState state) {
-    if (state is VideoLoaded && !state.hasReachedMax) {
-      context.read<VideoBloc>().add(
-        LoadMoreVideos(page: state.currentPage + 1),
+  Widget _buildBody(BuildContext context, VideoState state) {
+    final bloc = context.read<VideoBloc>();
+
+    if (state is VideoNoInternet) {
+      return NoInternetWidget(
+        onRetry: () async {
+          final connected = await _networkInfo.isConnected;
+          if (connected && mounted) {
+            bloc.add(const ConnectivityChanged(true));
+          }
+        },
       );
     }
+
+    if (state is VideoLoading) {
+      return const VideoSkeletonLoader();
+    }
+
+    if (state is VideoError) {
+      return ErrorDisplayWidget(
+        message: state.message,
+        onRetry: () => context.read<VideoBloc>().add(const LoadVideos()),
+      );
+    }
+
+    if (state is VideoLoaded || state is VideoLoadingMore) {
+      final videos = state is VideoLoaded
+          ? state.videos
+          : (state as VideoLoadingMore).videos;
+      final hasReachedMax = state is VideoLoaded ? state.hasReachedMax : false;
+
+      return RefreshIndicator(
+        onRefresh: () async {
+          currentPage = 0;
+          disposeAllControllers();
+          if (_pageController.hasClients) _pageController.jumpToPage(0);
+          context.read<VideoBloc>().add(const RefreshVideos());
+        },
+        color: AppColors.white,
+        backgroundColor: AppColors.grey900,
+        child: PageView.builder(
+          controller: _pageController,
+          scrollDirection: Axis.vertical,
+          itemCount: videos.length + (hasReachedMax ? 0 : 1),
+          onPageChanged: (index) => _handlePageChange(index, videos),
+          itemBuilder: (context, index) {
+            if (index >= videos.length) {
+              return const Center(
+                child: CircularProgressIndicator(color: AppColors.white),
+              );
+            }
+            return _buildVideoItem(videos[index], index);
+          },
+        ),
+      );
+    }
+
+    return const VideoSkeletonLoader();
   }
 
-  Widget _buildErrorWidget(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            color: AppColors.red,
-            size: AppConstants.errorIconSize,
-          ),
-          const SizedBox(height: AppConstants.spacing16),
-          Text(
-            message,
-            style: const TextStyle(color: AppColors.white),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppConstants.spacing16),
-          ElevatedButton(
-            onPressed: () {
-              context.read<VideoBloc>().add(const LoadVideos());
-            },
-            child: const Text(Strings.retry),
-          ),
-        ],
-      ),
-    );
-  }
+  void _handlePageChange(int index, List<VideoEntity> videos) {
+    if (index >= videos.length) return;
 
-  Widget _buildLoadingIndicator() {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.white),
-    );
+    controllers[currentPage]?.pause();
+    playVideoFromStart(index);
+    cleanupDistantControllers(index);
+
+    if (videos.length - index <= 1) {
+      final state = context.read<VideoBloc>().state;
+      if (state is VideoLoaded && !state.hasReachedMax) {
+        context.read<VideoBloc>().add(
+          LoadMoreVideos(page: state.currentPage + 1),
+        );
+      }
+    }
+
+    currentPage = index;
+    setState(() {});
   }
 
   Widget _buildVideoItem(VideoEntity video, int index) {
     final isInitialized = isControllerInitialized(index);
     final duration = getVideoDuration(index);
-    final showProgressBar = isInitialized && duration.inSeconds > 30;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return GestureDetector(
-          onLongPressStart: (details) {
-            startFastForward(
-              index,
-              details.localPosition,
-              Size(constraints.maxWidth, constraints.maxHeight),
-            );
-          },
-          onLongPressEnd: (_) => stopFastForward(),
-          onLongPressCancel: () => stopFastForward(),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              _buildVideoPlayer(video, index),
-              _buildGradientOverlay(),
-              VideoInfoWidget(video: video),
-              if (isInitialized)
-                PlayPauseOverlay(
-                  isPlaying: isVideoPlaying(index),
-                  onTap: () => togglePlayPause(index),
-                ),
-              if (showProgressBar) _buildProgressBar(index),
-              if (isFastForwarding && fastForwardIndex == index)
-                const FastForwardIndicator(),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildVideoPlayer(VideoEntity video, int index) {
     final controller = controllers[index];
-    final isInitialized = isControllerInitialized(index);
 
-    final shouldInitialize = controller == null && index == currentPage;
-
-    if (shouldInitialize) {
+    if (controller == null && index == currentPage) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !controllers.containsKey(index)) {
           initializeController(video.videoUrl, index);
@@ -306,43 +174,61 @@ class _VideoReelsPageState extends State<VideoReelsPage>
       });
     }
 
-    return VideoPlayerWidget(
-      controller: controller,
-      isInitialized: isInitialized,
-      onTap: () => togglePlayPause(index),
-    );
-  }
-
-  Widget _buildProgressBar(int index) {
-    final controller = controllers[index];
-    if (controller == null || !controller.value.isInitialized) {
-      return const SizedBox.shrink();
-    }
-
-    return Positioned(
-      bottom: AppConstants.progressBarBottomPosition,
-      left: 0,
-      right: 0,
-      child: VideoProgressBar(controller: controller),
-    );
-  }
-
-  Widget _buildGradientOverlay() {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        height: AppConstants.gradientOverlayHeight,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.transparent,
-              AppColors.black.withValues(alpha: 0.8),
-            ],
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) => GestureDetector(
+        onLongPressStart: (d) => startFastForward(
+          index,
+          d.localPosition,
+          Size(constraints.maxWidth, constraints.maxHeight),
+        ),
+        onLongPressEnd: (_) => stopFastForward(),
+        onLongPressCancel: stopFastForward,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            VideoPlayerWidget(
+              controller: controller,
+              isInitialized: isInitialized,
+              onTap: () => togglePlayPause(index),
+            ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: AppConstants.gradientOverlayHeight,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      AppColors.black.withValues(alpha: 0.8),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            VideoInfoWidget(video: video),
+            Visibility(
+              visible: isInitialized,
+              child: PlayPauseOverlay(
+                isPlaying: isVideoPlaying(index),
+                onTap: () => togglePlayPause(index),
+              ),
+            ),
+            if (isInitialized && duration.inSeconds > 30 && controller != null)
+              Positioned(
+                bottom: AppConstants.progressBarBottomPosition,
+                left: 0,
+                right: 0,
+                child: VideoProgressBar(controller: controller),
+              ),
+            Visibility(
+              visible: isFastForwarding && fastForwardIndex == index,
+              child: const FastForwardIndicator(),
+            ),
+          ],
         ),
       ),
     );

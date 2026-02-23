@@ -31,6 +31,7 @@ mixin VideoControllerMixin<T extends StatefulWidget> on State<T> {
 
       controller.setLooping(true);
 
+      // Listener for play/pause state changes only
       controller.addListener(() {
         if (mounted) {
           setState(() {});
